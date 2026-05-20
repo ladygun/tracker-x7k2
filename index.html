@@ -130,7 +130,19 @@
   .meal-name {
     font-weight: 500; font-size: 14px;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
   }
+  .meal-fav-btn {
+    background: transparent; border: none; cursor: pointer;
+    padding: 2px; color: #52525b;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  .meal-fav-btn:hover { color: #fafafa; }
+  .meal-fav-btn.active { color: #fbbf24; }
+  .meal-fav-btn.active svg { fill: currentColor; }
+  .meal-fav-btn.active:hover { color: #f59e0b; }
   .meal-macros { font-size: 12px; color: #71717a; margin-top: 2px; }
   .meal-macros .p { color: #34d399; }
   .meal-macros .c { color: #fb7185; }
@@ -148,6 +160,61 @@
   .meal-actions button.delete:hover { color: #fb7185; }
 
   /* History */
+  .stats-card {
+    background: #18181b; border: 1px solid #27272a;
+    border-radius: 12px; padding: 12px;
+    margin-bottom: 12px;
+  }
+  .stats-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  .stats-title {
+    font-size: 12px; color: #a1a1aa; font-weight: 500;
+  }
+  .stats-toggle {
+    background: transparent; border: 1px solid #27272a;
+    color: #34d399;
+    font-size: 11px; font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 6px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .stats-toggle:hover { background: #27272a; }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  @media (min-width: 480px) {
+    .stats-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  .stat-card {
+    background: #09090b;
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .stat-label {
+    font-size: 10px;
+    color: #71717a;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+  .stat-value {
+    font-size: 18px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+    line-height: 1.1;
+  }
+  .stat-unit {
+    font-size: 11px; color: #71717a; font-weight: 400; margin-left: 1px;
+  }
+  .stat-spark {
+    margin-top: 4px;
+    height: 24px;
+  }
+  .stat-spark svg { width: 100%; height: 100%; }
   .history-entries { display: flex; flex-direction: column; gap: 8px; }
   .history-entry-wrap {
     background: #18181b; border: 1px solid #27272a;
@@ -255,6 +322,62 @@
     resize: none; height: 192px;
   }
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Input with star button inside */
+  .input-with-star { position: relative; }
+  .input-with-star input { padding-right: 40px !important; }
+  .input-star-btn {
+    position: absolute;
+    right: 6px; top: 50%;
+    transform: translateY(-50%);
+    background: transparent; border: none; cursor: pointer;
+    padding: 6px;
+    color: #52525b;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .input-star-btn:hover { color: #d4d4d8; background: #18181b; }
+  .input-star-btn.active { color: #fbbf24; }
+  .input-star-btn.active svg { fill: currentColor; }
+  .input-star-btn.active:hover { color: #f59e0b; }
+  .input-star-btn:disabled {
+    opacity: 0.3; cursor: not-allowed;
+  }
+  .input-star-btn:disabled:hover { background: transparent; color: #52525b; }
+
+  /* Suggestions dropdown */
+  .suggestions-list {
+    position: absolute;
+    top: 100%; left: 0; right: 0;
+    background: #09090b;
+    border: 1px solid #3f3f46;
+    border-radius: 8px;
+    margin-top: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 10;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+  .suggestion-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 1px solid #18181b;
+    color: #d4d4d8;
+    transition: background 0.1s;
+  }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover, .suggestion-item.active {
+    background: #18181b;
+    color: #fafafa;
+  }
+  .suggestion-empty {
+    padding: 12px;
+    font-size: 13px;
+    color: #71717a;
+    text-align: center;
+  }
 
   .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
 
@@ -401,14 +524,37 @@
         <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="field"><label>Nume</label><input type="text" id="meal-name" placeholder="ex. Piept de pui la grătar"></div>
-    <div class="field"><label id="meal-grams-label">Cantitate (g)</label><input type="number" id="meal-grams" placeholder="opțional"></div>
-    <div class="grid-2">
-      <div class="field"><label>Calorii (kcal)</label><input type="number" id="meal-kcal"></div>
-      <div class="field"><label>Proteine (g)</label><input type="number" id="meal-protein"></div>
-      <div class="field"><label>Carbohidrați (g)</label><input type="number" id="meal-carbs"></div>
-      <div class="field"><label>Grăsimi (g)</label><input type="number" id="meal-fat"></div>
+    <div class="field" style="position: relative;">
+      <label>Nume</label>
+      <div class="input-with-star">
+        <input type="text" id="meal-name" placeholder="ex. Piept de pui la grătar" autocomplete="off">
+        <button type="button" class="input-star-btn" id="meal-name-fav-btn" title="Favorit">
+          <svg class="icon" viewBox="0 0 24 24" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </button>
+      </div>
+      <div id="meal-suggestions" class="suggestions-list hidden"></div>
     </div>
+
+    <div style="font-size: 11px; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em; margin: 8px 0 6px;">Valori per 100g</div>
+    <div class="grid-2">
+      <div class="field"><label>Calorii (kcal)</label><input type="number" id="meal-kcal100" placeholder="0"></div>
+      <div class="field"><label>Proteine (g)</label><input type="number" id="meal-protein100" placeholder="0"></div>
+      <div class="field"><label>Carbohidrați (g)</label><input type="number" id="meal-carbs100" placeholder="0"></div>
+      <div class="field"><label>Grăsimi (g)</label><input type="number" id="meal-fat100" placeholder="0"></div>
+    </div>
+
+    <div class="field" style="margin-top: 4px;"><label>Cantitate consumată (g)</label><input type="number" id="meal-grams" placeholder="100"></div>
+
+    <div class="total-box" id="meal-total-box">
+      <div class="label">Total pentru <span id="meal-tot-grams">100</span>g</div>
+      <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px;">
+        <div class="row" style="display: flex; justify-content: space-between"><span style="color: #a1a1aa">kcal</span><span id="meal-tot-kcal" style="font-weight: 500; font-variant-numeric: tabular-nums">0</span></div>
+        <div class="row" style="display: flex; justify-content: space-between"><span style="color: #34d399">P</span><span id="meal-tot-protein" style="font-weight: 500; font-variant-numeric: tabular-nums">0 g</span></div>
+        <div class="row" style="display: flex; justify-content: space-between"><span style="color: #fb7185">C</span><span id="meal-tot-carbs" style="font-weight: 500; font-variant-numeric: tabular-nums">0 g</span></div>
+        <div class="row" style="display: flex; justify-content: space-between"><span style="color: #fbbf24">G</span><span id="meal-tot-fat" style="font-weight: 500; font-variant-numeric: tabular-nums">0 g</span></div>
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-secondary" id="meal-cancel" style="flex: 1;">Anulează</button>
       <button class="btn btn-primary" id="meal-save" style="flex: 1;">Salvează</button>
@@ -438,7 +584,15 @@
     </div>
 
     <div id="paste-step2" class="hidden">
-      <div class="field"><label>Nume</label><input type="text" id="paste-name"></div>
+      <div class="field">
+        <label>Nume</label>
+        <div class="input-with-star">
+          <input type="text" id="paste-name">
+          <button type="button" class="input-star-btn" id="paste-name-fav-btn" title="Favorit">
+            <svg class="icon" viewBox="0 0 24 24" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </button>
+        </div>
+      </div>
       <div class="info-box" style="margin-bottom: 12px;">
         <div class="label">Detectat per 100g</div>
         <div class="grid">
@@ -473,16 +627,18 @@
 // ============ STATE ============
 const STORAGE_KEY_TARGETS = 'tracker:targets';
 const STORAGE_KEY_DAYS = 'tracker:days';
+const STORAGE_KEY_FAVORITES = 'tracker:favorites';
 const DEFAULT_TARGETS = { kcal: 1805, protein: 138, carbs: 158, fat: 69 };
 
 let state = {
   targets: { ...DEFAULT_TARGETS },
   days: {},
+  favorites: [], // array of lowercase meal names marked as favorite
   currentDate: todayKey(),
   view: 'today',
   editingMealId: null,
-  scaleBase: null,
   expandedDays: new Set(),
+  averagesPeriod: 'week', // 'week' | 'month'
 };
 
 // ============ STORAGE ============
@@ -495,9 +651,25 @@ function loadState() {
     const d = localStorage.getItem(STORAGE_KEY_DAYS);
     if (d) state.days = JSON.parse(d);
   } catch (e) {}
+  try {
+    const f = localStorage.getItem(STORAGE_KEY_FAVORITES);
+    if (f) state.favorites = JSON.parse(f);
+  } catch (e) {}
 }
 function saveTargets() { localStorage.setItem(STORAGE_KEY_TARGETS, JSON.stringify(state.targets)); }
 function saveDays() { localStorage.setItem(STORAGE_KEY_DAYS, JSON.stringify(state.days)); }
+function saveFavorites() { localStorage.setItem(STORAGE_KEY_FAVORITES, JSON.stringify(state.favorites)); }
+
+function isFavorite(name) {
+  return state.favorites.includes(name.trim().toLowerCase());
+}
+function toggleFavorite(name) {
+  const key = name.trim().toLowerCase();
+  const idx = state.favorites.indexOf(key);
+  if (idx >= 0) state.favorites.splice(idx, 1);
+  else state.favorites.push(key);
+  saveFavorites();
+}
 
 // ============ HELPERS ============
 function todayKey() {
@@ -522,6 +694,47 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// Normalize common OCR misreads in Romanian text (l→i, mostly)
+// Uses a curated list of specific misreads rather than aggressive rules,
+// to avoid breaking legitimate words like "complet", "plantă", "blocaj"
+function fixRomanianOCR(text) {
+  if (!text) return text;
+
+  // Standalone "șl" / "Șl" → "și" / "Și"
+  text = text.replace(/\b([șȘ])l\b/g, '$1i');
+
+  // Common food/cooking words where 'l' is misread for 'i'
+  // Pattern: each entry is [wrong, right]. Case-insensitive, preserves first-letter case.
+  const swaps = [
+    // chia, piure, ulei
+    [/\bchla\b/gi, 'chia'],
+    [/\bplure\b/gi, 'piure'],
+    [/\bulel\b/gi, 'ulei'],
+    // "ingrediente", "ingredlente"
+    [/\bingredlente\b/gi, 'ingrediente'],
+    // common "-l" endings that should be "-i" (plural masculine in Romanian often ends in 'i')
+    // pesmet, alimente etc are fine; main culprits are loose words ending in consonant + l
+    [/\bfulgl\b/gi, 'fulgi'],
+    [/\bouäl\b/gi, 'ouă'],
+    // months/dates (Romanian)
+    [/\bmal\b/gi, 'mai'],
+    // generic: words ending in -ăl that should be -ăi
+    [/([a-zăâîșț])ăl\b/gi, '$1ăi'],
+  ];
+
+  for (const [wrong, right] of swaps) {
+    text = text.replace(wrong, (match) => {
+      // Preserve case of first letter
+      if (match[0] === match[0].toUpperCase()) {
+        return right[0].toUpperCase() + right.slice(1);
+      }
+      return right;
+    });
+  }
+
+  return text;
+}
+
 // ============ PARSER ============
 function parseNutritionLabel(text) {
   const t = text.toLowerCase().replace(/\s+/g, ' ');
@@ -531,8 +744,10 @@ function parseNutritionLabel(text) {
   if (lines.length > 0) {
     const firstLine = lines[0];
     const nameMatch = firstLine.match(/^(?:[A-ZĂÂÎȘȚ][a-zăâîșț]+\s*[-–]\s*)?(.+)$/);
-    result.name = nameMatch ? nameMatch[1].trim() : firstLine;
-    if (result.name.length > 80) result.name = result.name.slice(0, 80);
+    let name = nameMatch ? nameMatch[1].trim() : firstLine;
+    name = fixRomanianOCR(name);
+    if (name.length > 80) name = name.slice(0, 80);
+    result.name = name;
   }
 
   const kcalMatch = t.match(/(?:per\s*100\s*g[^.]*?)?(?:\/|valoare energetic[ăa])[^.]*?(\d+(?:[.,]\d+)?)\s*kcal/);
@@ -543,13 +758,17 @@ function parseNutritionLabel(text) {
     if (per100) result.kcal100 = parseFloat(per100[1].replace(',', '.'));
   }
 
-  const fatMatch = t.match(/gr[ăa]s[il]m[ile][^\d]*(\d+(?:[.,]\d+)?)\s*g/);
+  // Macros - tolerant to OCR variations where 'i' often gets read as 'l' or 't'
+  // grăsimi → grăslml, grasiml, gräslmt etc.
+  const fatMatch = t.match(/gr[äăa]s[ilt]m[ilt]\b[^\d]*(\d+(?:[.,]\d+)?)\s*g/);
   if (fatMatch) result.fat100 = parseFloat(fatMatch[1].replace(',', '.'));
 
-  const carbMatch = t.match(/(?:glucide|carbohidra[țt]i)[^\d]*(\d+(?:[.,]\d+)?)\s*g/);
+  // glucide → gluclde, glucfde; carbohidrați → carbohldrati
+  const carbMatch = t.match(/(?:gluc[ilt]de|carboh[ilt]dra[țt][ilt])[^\d]*(\d+(?:[.,]\d+)?)\s*g/);
   if (carbMatch) result.carbs100 = parseFloat(carbMatch[1].replace(',', '.'));
 
-  const proteinMatch = t.match(/proteine[^\d]*(\d+(?:[.,]\d+)?)\s*g/);
+  // proteine → protelne, protetne
+  const proteinMatch = t.match(/prote[ilt]ne[^\d]*(\d+(?:[.,]\d+)?)\s*g/);
   if (proteinMatch) result.protein100 = parseFloat(proteinMatch[1].replace(',', '.'));
 
   const weightMatch = t.match(/greutate[:\s]*(\d+(?:[.,]\d+)?)\s*g/);
@@ -629,7 +848,12 @@ function renderToday() {
     container.innerHTML = '<div class="meals-list">' + meals.map(meal => `
       <div class="meal">
         <div class="meal-info">
-          <div class="meal-name">${escapeHtml(meal.name)}</div>
+          <div class="meal-name">
+            <button class="meal-fav-btn ${isFavorite(meal.name) ? 'active' : ''}" data-fav-name="${escapeHtml(meal.name)}" title="${isFavorite(meal.name) ? 'Scoate din favorite' : 'Adaugă la favorite'}">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </button>
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(meal.name)}</span>
+          </div>
           <div class="meal-macros">
             ${meal.grams ? `${round1(meal.grams)}g · ` : ''}
             <span class="p">P ${round1(meal.protein)}g</span> ·
@@ -658,6 +882,12 @@ function renderToday() {
     container.querySelectorAll('[data-action="delete"]').forEach(btn => {
       btn.onclick = () => deleteMeal(btn.dataset.id);
     });
+    container.querySelectorAll('[data-fav-name]').forEach(btn => {
+      btn.onclick = () => {
+        toggleFavorite(btn.dataset.favName);
+        render();
+      };
+    });
   }
 }
 
@@ -674,6 +904,44 @@ function renderMacro(name, value, target, color) {
     remaining >= 0 ? `${round1(remaining)} rămase` : `${round1(Math.abs(remaining))} peste`;
 }
 
+// Get last N days as array of {date, totals} ordered oldest -> newest
+function getLastNDaysTotals(n) {
+  const result = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const date = shiftDate(todayKey(), -i);
+    const meals = state.days[date] || [];
+    const totals = meals.reduce((acc, m) => ({
+      kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein,
+      carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat
+    }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+    result.push({ date, totals, hasData: meals.length > 0 });
+  }
+  return result;
+}
+
+// Build SVG sparkline path. Width fits into a small inline chart area.
+function buildSparkline(values, width = 100, height = 28, color = '#34d399') {
+  if (values.length === 0) return '';
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = max - min || 1;
+  const step = values.length > 1 ? width / (values.length - 1) : 0;
+  const points = values.map((v, i) => {
+    const x = i * step;
+    const y = height - ((v - min) / range) * height;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  // Area fill underneath the line
+  const areaPath = `M0,${height} L${points.join(' L')} L${width},${height} Z`;
+  const linePath = `M${points.join(' L')}`;
+  return `
+    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="display: block">
+      <path d="${areaPath}" fill="${color}" fill-opacity="0.15"/>
+      <path d="${linePath}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `;
+}
+
 function renderHistory() {
   const view = document.getElementById('view-history');
   const entries = Object.entries(state.days)
@@ -685,7 +953,59 @@ function renderHistory() {
     return;
   }
 
-  view.innerHTML = '<div class="history-entries">' + entries.map(([date, meals]) => {
+  // --- Stats block ---
+  const periodDays = state.averagesPeriod === 'week' ? 7 : 30;
+  const periodLabel = state.averagesPeriod === 'week' ? 'Săpt' : 'Lună';
+  const otherLabel = state.averagesPeriod === 'week' ? 'Vezi lunar' : 'Vezi săptămânal';
+  const lastN = getLastNDaysTotals(periodDays);
+  // Only average days that have data
+  const daysWithData = lastN.filter(d => d.hasData);
+  const avg = daysWithData.length > 0 ? {
+    kcal: daysWithData.reduce((a, d) => a + d.totals.kcal, 0) / daysWithData.length,
+    protein: daysWithData.reduce((a, d) => a + d.totals.protein, 0) / daysWithData.length,
+    carbs: daysWithData.reduce((a, d) => a + d.totals.carbs, 0) / daysWithData.length,
+    fat: daysWithData.reduce((a, d) => a + d.totals.fat, 0) / daysWithData.length,
+  } : { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+
+  // Sparkline values for each metric across the period (0 for days with no data)
+  const kcalVals = lastN.map(d => d.totals.kcal);
+  const proteinVals = lastN.map(d => d.totals.protein);
+  const carbsVals = lastN.map(d => d.totals.carbs);
+  const fatVals = lastN.map(d => d.totals.fat);
+
+  const statsHtml = `
+    <div class="stats-card">
+      <div class="stats-header">
+        <div class="stats-title">Medie ${periodLabel.toLowerCase()} (${daysWithData.length}/${periodDays} zile)</div>
+        <button class="stats-toggle" id="stats-toggle">${otherLabel}</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">kcal</div>
+          <div class="stat-value">${Math.round(avg.kcal)}</div>
+          <div class="stat-spark">${buildSparkline(kcalVals, 100, 24, '#a78bfa')}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" style="color: #34d399">Proteine</div>
+          <div class="stat-value">${round1(avg.protein)}<span class="stat-unit">g</span></div>
+          <div class="stat-spark">${buildSparkline(proteinVals, 100, 24, '#34d399')}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" style="color: #fb7185">Carbo</div>
+          <div class="stat-value">${round1(avg.carbs)}<span class="stat-unit">g</span></div>
+          <div class="stat-spark">${buildSparkline(carbsVals, 100, 24, '#fb7185')}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" style="color: #fbbf24">Grăsimi</div>
+          <div class="stat-value">${round1(avg.fat)}<span class="stat-unit">g</span></div>
+          <div class="stat-spark">${buildSparkline(fatVals, 100, 24, '#fbbf24')}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // --- Entries (existing logic) ---
+  const entriesHtml = '<div class="history-entries">' + entries.map(([date, meals]) => {
     const totals = meals.reduce((acc, m) => ({
       kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein,
       carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat
@@ -750,6 +1070,13 @@ function renderHistory() {
     `;
   }).join('') + '</div>';
 
+  view.innerHTML = statsHtml + entriesHtml;
+
+  document.getElementById('stats-toggle').onclick = () => {
+    state.averagesPeriod = state.averagesPeriod === 'week' ? 'month' : 'week';
+    renderHistory();
+  };
+
   view.querySelectorAll('[data-toggle-date]').forEach(btn => {
     btn.onclick = () => {
       const date = btn.dataset.toggleDate;
@@ -811,56 +1138,152 @@ function openMealModal(editId) {
     if (!meal) return;
     title.textContent = 'Editează meal';
     document.getElementById('meal-name').value = meal.name;
-    document.getElementById('meal-grams').value = meal.grams ? round1(meal.grams) : '';
-    document.getElementById('meal-kcal').value = Math.round(meal.kcal);
-    document.getElementById('meal-protein').value = round1(meal.protein);
-    document.getElementById('meal-carbs').value = round1(meal.carbs);
-    document.getElementById('meal-fat').value = round1(meal.fat);
 
-    if (meal.grams > 0) {
-      state.scaleBase = {
-        grams: meal.grams,
-        kcalPerG: meal.kcal / meal.grams,
-        proteinPerG: meal.protein / meal.grams,
-        carbsPerG: meal.carbs / meal.grams,
-        fatPerG: meal.fat / meal.grams,
-      };
-      document.getElementById('meal-grams-label').textContent = 'Cantitate (g) · macro-urile se ajustează automat';
-    } else {
-      state.scaleBase = null;
-      document.getElementById('meal-grams-label').textContent = 'Cantitate (g)';
-    }
+    // Derive per-100g values from the saved meal
+    const grams = meal.grams || 100;
+    const factor = 100 / grams;
+    document.getElementById('meal-kcal100').value = Math.round(meal.kcal * factor);
+    document.getElementById('meal-protein100').value = round1(meal.protein * factor);
+    document.getElementById('meal-carbs100').value = round1(meal.carbs * factor);
+    document.getElementById('meal-fat100').value = round1(meal.fat * factor);
+    document.getElementById('meal-grams').value = meal.grams ? round1(meal.grams) : '100';
   } else {
     title.textContent = 'Adaugă meal';
     document.getElementById('meal-name').value = '';
-    document.getElementById('meal-grams').value = '';
-    document.getElementById('meal-kcal').value = '';
-    document.getElementById('meal-protein').value = '';
-    document.getElementById('meal-carbs').value = '';
-    document.getElementById('meal-fat').value = '';
-    state.scaleBase = null;
-    document.getElementById('meal-grams-label').textContent = 'Cantitate (g)';
+    document.getElementById('meal-kcal100').value = '';
+    document.getElementById('meal-protein100').value = '';
+    document.getElementById('meal-carbs100').value = '';
+    document.getElementById('meal-fat100').value = '';
+    document.getElementById('meal-grams').value = '100';
   }
 
+  hideSuggestions();
+  updateMealTotals();
+  syncFavBtn('meal-name-fav-btn', document.getElementById('meal-name').value);
   modal.classList.remove('hidden');
+}
+
+// Build a list of unique favorite meals (latest version of each by name) from all logged days
+function getUniqueMeals() {
+  // Collect with timestamps from id (id starts with Date.now())
+  const allMeals = [];
+  for (const [date, meals] of Object.entries(state.days)) {
+    for (const meal of meals) {
+      // Only include meals marked as favorite
+      if (!isFavorite(meal.name)) continue;
+      // Parse the timestamp from id (e.g. "1716192000123.456" or fall back to date)
+      const idStr = String(meal.id);
+      const ts = parseFloat(idStr) || new Date(date).getTime();
+      allMeals.push({ ...meal, _ts: ts });
+    }
+  }
+  // Keep only the most recent for each unique name (case-insensitive)
+  const byName = new Map();
+  for (const meal of allMeals) {
+    const key = meal.name.trim().toLowerCase();
+    const existing = byName.get(key);
+    if (!existing || meal._ts > existing._ts) byName.set(key, meal);
+  }
+  return Array.from(byName.values()).sort((a, b) => b._ts - a._ts);
+}
+
+function showSuggestions(query) {
+  const list = document.getElementById('meal-suggestions');
+  const q = query.trim().toLowerCase();
+
+  // Require at least 3 characters to show suggestions
+  if (q.length < 3) {
+    hideSuggestions();
+    return;
+  }
+
+  const all = getUniqueMeals();
+  const filtered = all.filter(m => m.name.toLowerCase().includes(q));
+
+  // Skip suggestions if we're editing AND the query exactly matches the meal being edited
+  if (state.editingMealId) {
+    const editing = (state.days[state.currentDate] || []).find(m => m.id === state.editingMealId);
+    if (editing && editing.name.toLowerCase() === q) {
+      hideSuggestions();
+      return;
+    }
+  }
+
+  if (filtered.length === 0) {
+    hideSuggestions();
+    return;
+  }
+
+  list.innerHTML = filtered.slice(0, 20).map(m => `
+    <div class="suggestion-item" data-meal-id="${m.id}">${escapeHtml(m.name)}</div>
+  `).join('');
+
+  list.querySelectorAll('[data-meal-id]').forEach(item => {
+    item.onclick = () => {
+      const meal = filtered.find(m => String(m.id) === item.dataset.mealId);
+      if (meal) applyMealSuggestion(meal);
+    };
+  });
+
+  list.classList.remove('hidden');
+}
+
+function hideSuggestions() {
+  document.getElementById('meal-suggestions').classList.add('hidden');
+}
+
+function applyMealSuggestion(meal) {
+  document.getElementById('meal-name').value = meal.name;
+  const grams = meal.grams || 100;
+  const factor = 100 / grams;
+  document.getElementById('meal-kcal100').value = Math.round(meal.kcal * factor);
+  document.getElementById('meal-protein100').value = round1(meal.protein * factor);
+  document.getElementById('meal-carbs100').value = round1(meal.carbs * factor);
+  document.getElementById('meal-fat100').value = round1(meal.fat * factor);
+  document.getElementById('meal-grams').value = meal.grams ? round1(meal.grams) : '100';
+  hideSuggestions();
+  updateMealTotals();
+  syncFavBtn('meal-name-fav-btn', meal.name);
+  // Focus the grams field so user can adjust the quantity right away
+  document.getElementById('meal-grams').focus();
+  document.getElementById('meal-grams').select();
 }
 
 function closeMealModal() {
   document.getElementById('meal-modal').classList.add('hidden');
   state.editingMealId = null;
-  state.scaleBase = null;
+}
+
+function updateMealTotals() {
+  const g = parseFloat(document.getElementById('meal-grams').value) || 0;
+  const kcal100 = parseFloat(document.getElementById('meal-kcal100').value) || 0;
+  const protein100 = parseFloat(document.getElementById('meal-protein100').value) || 0;
+  const carbs100 = parseFloat(document.getElementById('meal-carbs100').value) || 0;
+  const fat100 = parseFloat(document.getElementById('meal-fat100').value) || 0;
+  const factor = g / 100;
+  document.getElementById('meal-tot-grams').textContent = g;
+  document.getElementById('meal-tot-kcal').textContent = Math.round(kcal100 * factor);
+  document.getElementById('meal-tot-protein').textContent = `${round1(protein100 * factor)} g`;
+  document.getElementById('meal-tot-carbs').textContent = `${round1(carbs100 * factor)} g`;
+  document.getElementById('meal-tot-fat').textContent = `${round1(fat100 * factor)} g`;
 }
 
 function saveMealFromModal() {
   const name = document.getElementById('meal-name').value.trim();
   if (!name) return;
+  const g = parseFloat(document.getElementById('meal-grams').value) || 0;
+  const kcal100 = parseFloat(document.getElementById('meal-kcal100').value) || 0;
+  const protein100 = parseFloat(document.getElementById('meal-protein100').value) || 0;
+  const carbs100 = parseFloat(document.getElementById('meal-carbs100').value) || 0;
+  const fat100 = parseFloat(document.getElementById('meal-fat100').value) || 0;
+  const factor = g / 100;
   const data = {
     name,
-    grams: parseFloat(document.getElementById('meal-grams').value) || 0,
-    kcal: parseFloat(document.getElementById('meal-kcal').value) || 0,
-    protein: parseFloat(document.getElementById('meal-protein').value) || 0,
-    carbs: parseFloat(document.getElementById('meal-carbs').value) || 0,
-    fat: parseFloat(document.getElementById('meal-fat').value) || 0,
+    grams: g,
+    kcal: kcal100 * factor,
+    protein: protein100 * factor,
+    carbs: carbs100 * factor,
+    fat: fat100 * factor,
   };
   if (state.editingMealId) updateMeal(state.editingMealId, data);
   else addMeal(data);
@@ -897,6 +1320,7 @@ function processPaste() {
   document.getElementById('p100-fat').textContent = pasteParsed.fat100 != null ? `${round1(pasteParsed.fat100)} g` : '— g';
 
   updatePasteTotals();
+  syncFavBtn('paste-name-fav-btn', pasteParsed.name || '');
 
   document.getElementById('paste-step1').classList.add('hidden');
   document.getElementById('paste-step2').classList.remove('hidden');
@@ -948,23 +1372,56 @@ document.getElementById('meal-modal-close').onclick = closeMealModal;
 document.getElementById('meal-cancel').onclick = closeMealModal;
 document.getElementById('meal-save').onclick = saveMealFromModal;
 
-// Auto-scale macros when grams changes during edit
-document.getElementById('meal-grams').addEventListener('input', (e) => {
-  const newGrams = parseFloat(e.target.value);
-  if (state.scaleBase && !isNaN(newGrams) && newGrams > 0) {
-    document.getElementById('meal-kcal').value = Math.round(state.scaleBase.kcalPerG * newGrams);
-    document.getElementById('meal-protein').value = round1(state.scaleBase.proteinPerG * newGrams);
-    document.getElementById('meal-carbs').value = round1(state.scaleBase.carbsPerG * newGrams);
-    document.getElementById('meal-fat').value = round1(state.scaleBase.fatPerG * newGrams);
+// Recalculate totals live when per-100g values or quantity change
+['meal-kcal100', 'meal-protein100', 'meal-carbs100', 'meal-fat100', 'meal-grams'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateMealTotals);
+});
+
+// Meal name suggestions
+const mealNameInput = document.getElementById('meal-name');
+mealNameInput.addEventListener('focus', () => showSuggestions(mealNameInput.value));
+mealNameInput.addEventListener('input', () => {
+  showSuggestions(mealNameInput.value);
+  syncFavBtn('meal-name-fav-btn', mealNameInput.value);
+});
+// Hide suggestions when clicking outside the name field
+document.addEventListener('mousedown', (e) => {
+  const list = document.getElementById('meal-suggestions');
+  if (list.classList.contains('hidden')) return;
+  if (!mealNameInput.contains(e.target) && !list.contains(e.target)) {
+    hideSuggestions();
   }
 });
-// Manual edit on macro fields disables scaling
-['meal-kcal', 'meal-protein', 'meal-carbs', 'meal-fat'].forEach(id => {
-  document.getElementById(id).addEventListener('input', () => {
-    state.scaleBase = null;
-    document.getElementById('meal-grams-label').textContent = 'Cantitate (g)';
-  });
+
+// Star button logic — works for both manual and paste modals
+function syncFavBtn(btnId, name) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  const trimmed = (name || '').trim();
+  btn.disabled = !trimmed;
+  btn.classList.toggle('active', !!trimmed && isFavorite(trimmed));
+}
+
+document.getElementById('meal-name-fav-btn').onclick = () => {
+  const name = mealNameInput.value.trim();
+  if (!name) return;
+  toggleFavorite(name);
+  syncFavBtn('meal-name-fav-btn', name);
+  // Re-render today view so star state syncs with meal list if visible
+  if (state.view === 'today') renderToday();
+};
+
+const pasteNameInput = document.getElementById('paste-name');
+pasteNameInput.addEventListener('input', () => {
+  syncFavBtn('paste-name-fav-btn', pasteNameInput.value);
 });
+document.getElementById('paste-name-fav-btn').onclick = () => {
+  const name = pasteNameInput.value.trim();
+  if (!name) return;
+  toggleFavorite(name);
+  syncFavBtn('paste-name-fav-btn', name);
+  if (state.view === 'today') renderToday();
+};
 
 document.getElementById('paste-modal-close').onclick = closePasteModal;
 document.getElementById('paste-cancel').onclick = closePasteModal;
