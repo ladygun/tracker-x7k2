@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Calorii">
+<meta name="theme-color" content="#09090b">
+<title>Calorii</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    background: #09090b;
+    color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: contain;
+    min-height: 100vh;
+  }
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .container { max-width: 640px; margin: 0 auto; padding: 16px 16px 96px; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+  .tabs { display: flex; gap: 4px; }
+  .tab-btn {
+    background: transparent; border: none; color: #a1a1aa;
+    font-size: 14px; padding: 6px 12px; border-radius: 8px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .tab-btn:hover { color: #fafafa; }
+  .tab-btn.active { background: #27272a; color: #fafafa; }
+  .icon-btn {
+    background: transparent; border: none; color: #a1a1aa;
+    padding: 6px; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .icon-btn:hover, .icon-btn.active { background: #27272a; color: #fafafa; }
+
+  .date-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #18181b; border: 1px solid #27272a;
+    border-radius: 12px; padding: 8px 12px; margin-bottom: 16px;
+  }
+  .date-nav-text { text-align: center; }
+  .date-nav-text .date { font-size: 14px; font-weight: 500; }
+  .date-nav-text .today-link {
+    background: none; border: none; color: #34d399;
+    font-size: 12px; cursor: pointer; margin-top: 2px;
+  }
+
+  .summary-card {
+    background: #18181b; border: 1px solid #27272a;
+    border-radius: 16px; padding: 20px; margin-bottom: 16px;
+  }
+  .summary-top {
+    display: flex; align-items: center; gap: 20px; margin-bottom: 16px;
+  }
+  .ring-wrap { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .ring-center .value { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .ring-center .label { font-size: 12px; color: #71717a; }
+  .summary-stats { flex: 1; }
+  .summary-row {
+    display: flex; justify-content: space-between;
+    font-size: 14px; padding: 4px 0;
+  }
+  .summary-row .label { color: #a1a1aa; }
+  .summary-row .value { font-weight: 500; font-variant-numeric: tabular-nums; }
+  .summary-row .value.good { color: #34d399; }
+  .summary-row .value.bad { color: #fb7185; }
+
+  .macros { padding-top: 16px; border-top: 1px solid #27272a; }
+  .macro {
+    margin-bottom: 12px;
+  }
+  .macro:last-child { margin-bottom: 0; }
+  .macro-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 14px; margin-bottom: 4px;
+  }
+  .macro-header .name { color: #d4d4d8; font-weight: 500; }
+  .macro-header .nums { color: #fafafa; font-variant-numeric: tabular-nums; }
+  .macro-bar {
+    height: 6px; background: #27272a;
+    border-radius: 999px; overflow: hidden;
+  }
+  .macro-bar > div { height: 100%; border-radius: 999px; transition: width 0.3s; }
+  .macro-remaining {
+    font-size: 12px; color: #71717a; margin-top: 4px;
+    text-align: right; font-variant-numeric: tabular-nums;
+  }
+
+  .add-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .btn {
+    border: none; cursor: pointer; font-size: 14px; font-weight: 500;
+    padding: 12px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all 0.15s;
+    color: #fafafa;
+  }
+  .btn-primary { background: #059669; }
+  .btn-primary:hover { background: #10b981; }
+  .btn-primary:disabled { background: #3f3f46; color: #71717a; cursor: not-allowed; }
+  .btn-secondary { background: #27272a; border: 1px solid #3f3f46; }
+  .btn-secondary:hover { background: #3f3f46; }
+
+  .empty-state {
+    text-align: center; padding: 48px 16px;
+    color: #71717a; font-size: 14px;
+  }
+
+  .meals-list { display: flex; flex-direction: column; gap: 8px; }
+  .meal {
+    background: #18181b; border: 1px solid #27272a;
+    border-radius: 12px; padding: 12px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .meal-info { flex: 1; min-width: 0; }
+  .meal-name {
+    font-weight: 500; font-size: 14px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .meal-fav-btn {
+    background: transparent; border: none; cursor: pointer;
+    padding: 2px; color: #52525b;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  .meal-fav-btn:hover { color: #fafafa; }
+  .meal-fav-btn.active { color: #fbbf24; }
+  .meal-fav-btn.active svg { fill: currentColor; }
+  .meal-fav-btn.active:hover { color: #f59e0b; }
+  .meal-macros { font-size: 12px; color: #71717a; margin-top: 2px; }
+  .meal-macros .p { color: #34d399; }
+  .meal-macros .c { color: #fb7185; }
+  .meal-macros .g { color: #fbbf24; }
+  .meal-kcal { text-align: right; }
+  .meal-kcal .num { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .meal-kcal .unit { font-size: 12px; color: #71717a; }
+  .meal-actions { display: flex; flex-direction: column; gap: 4px; }
+  .meal-actions button {
+    background: transparent; border: none; cursor: pointer;
+    padding: 4px; border-radius: 4px; color: #a1a1aa;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .meal-actions button:hover { background: #27272a; color: #fafafa; }
+  .meal-actions button.delete:hover { color: #fb7185; }
+
+  /* History */
+  .stats-card {
+    background: #18181b; border: 1px solid #27272a;
+    border-radius: 12px; padding: 12px;
+    margin-bottom: 12px;
+  }
+  .stats-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  .stats-title {
+    font-size: 12px; color: #a1a1aa; font-weight: 500;
+  }
+  .stats-toggle {
+    background: transparent; border: 1px solid #27272a;
+    color: #34d399;
+    font-size: 11px; font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 6px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .stats-toggle:hover { background: #27272a; }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  @media (min-width: 480px) {
+    .stats-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  .stat-card {
+    background: #09090b;
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .stat-label {
+    font-size: 10px;
+    color: #71717a;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+  .stat-value {
+    font-size: 18px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+    line-height: 1.1;
+  }
+  .stat-unit {
+    font-size: 11px; color: #71717a; font-weight: 400; margin-left: 1px;
+  }
+  .stat-spark {
+    margin-top: 4px;
+    height: 24px;
+  }
+  .stat-spark svg { width: 100%; height: 100%; }
+  .history-entries { display: flex; flex-direction: column; gap: 8px; }
+  .history-entry-wrap {
+    background: #18181b; border: 1px solid #27272a;
+    border-radius: 12px; overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .history-entry-wrap:hover { border-color: #3f3f46; }
+  .history-entry {
+    background: transparent; border: none;
+    padding: 12px;
+    cursor: pointer; width: 100%; text-align: left; color: inherit; font: inherit;
+  }
+  .history-entry-top {
+    display: flex; justify-content: space-between; margin-bottom: 8px;
+  }
+  .history-chevron {
+    transition: transform 0.2s ease;
+    color: #71717a;
+    flex-shrink: 0;
+  }
+  .history-chevron.expanded { transform: rotate(90deg); color: #fafafa; }
+
+  .history-meals {
+    border-top: 1px solid #27272a;
+    padding: 8px 12px 12px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .history-meal {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px;
+    background: #09090b;
+    border-radius: 8px;
+  }
+  .history-meal-info { flex: 1; min-width: 0; }
+  .history-meal-name {
+    font-weight: 500; font-size: 13px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .history-meal-macros { font-size: 11px; color: #71717a; margin-top: 2px; }
+  .history-meal-macros .p { color: #34d399; }
+  .history-meal-macros .c { color: #fb7185; }
+  .history-meal-macros .g { color: #fbbf24; }
+  .history-meal-kcal { text-align: right; }
+  .history-meal-kcal .num { font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .history-meal-kcal .unit { font-size: 11px; color: #71717a; }
+
+  .history-jump-btn {
+    background: transparent; border: 1px solid #27272a;
+    color: #34d399;
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    margin-top: 4px;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    transition: all 0.15s;
+  }
+  .history-jump-btn:hover { background: #27272a; }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    z-index: 50;
+    display: flex; align-items: flex-end; justify-content: center;
+    padding: 0;
+  }
+  @media (min-width: 640px) {
+    .modal-backdrop { align-items: center; padding: 16px; }
+  }
+  .modal {
+    background: #18181b; border: 1px solid #27272a;
+    border-radius: 16px 16px 0 0;
+    width: 100%; max-width: 480px;
+    padding: 20px;
+    max-height: 90vh; overflow-y: auto;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 640px) {
+    .modal { border-radius: 16px; padding-bottom: 20px; }
+  }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .modal-title { font-size: 18px; font-weight: 600; }
+
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block; font-size: 12px; color: #a1a1aa;
+    margin-bottom: 4px;
+  }
+  .field input, .field textarea {
+    width: 100%; background: #09090b;
+    border: 1px solid #27272a; border-radius: 8px;
+    padding: 8px 12px; font-size: 14px; color: #fafafa;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  .field input:focus, .field textarea:focus {
+    outline: none; border-color: #059669;
+  }
+  .field textarea {
+    resize: none; height: 192px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Input with star button inside */
+  .input-with-star { position: relative; }
+  .input-with-star input { padding-right: 40px !important; }
+  .input-star-btn {
+    position: absolute;
+    right: 6px; top: 50%;
+    transform: translateY(-50%);
+    background: transparent; border: none; cursor: pointer;
+    padding: 6px;
+    color: #52525b;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .input-star-btn:hover { color: #d4d4d8; background: #18181b; }
+  .input-star-btn.active { color: #fbbf24; }
+  .input-star-btn.active svg { fill: currentColor; }
+  .input-star-btn.active:hover { color: #f59e0b; }
+  .input-star-btn:disabled {
+    opacity: 0.3; cursor: not-allowed;
+  }
+  .input-star-btn:disabled:hover { background: transparent; color: #52525b; }
+
+  /* Suggestions dropdown */
+  .suggestions-list {
+    position: absolute;
+    top: 100%; left: 0; right: 0;
+    background: #09090b;
+    border: 1px solid #3f3f46;
+    border-radius: 8px;
+    margin-top: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 10;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+  .suggestion-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 1px solid #18181b;
+    color: #d4d4d8;
+    transition: background 0.1s;
+  }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover, .suggestion-item.active {
+    background: #18181b;
+    color: #fafafa;
+  }
+  .suggestion-empty {
+    padding: 12px;
+    font-size: 13px;
+    color: #71717a;
+    text-align: center;
+  }
+
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+
+  .info-box {
+    background: #09090b; border: 1px solid #27272a;
+    border-radius: 8px; padding: 12px;
+  }
+  .info-box .label { font-size: 12px; color: #71717a; margin-bottom: 8px; }
+  .info-box .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; }
+  .info-box .row { display: flex; justify-content: space-between; }
+  .info-box .row span:last-child { font-variant-numeric: tabular-nums; }
+
+  .total-box {
+    background: rgba(6, 78, 59, 0.3);
+    border: 1px solid rgba(6, 95, 70, 0.5);
+    border-radius: 8px; padding: 12px;
+  }
+  .total-box .label { font-size: 12px; color: #34d399; margin-bottom: 8px; }
+
+  .hint { font-size: 12px; color: #71717a; margin-top: 8px; }
+
+  /* Settings */
+  .settings-card {
+    background: #18181b; border: 1px solid #27272a;
+    border-radius: 16px; padding: 20px;
+  }
+  .settings-card h2 {
+    font-size: 18px; font-weight: 600; margin-bottom: 16px;
+  }
+
+  /* Icons (using inline SVG) */
+  .icon { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .icon-sm { width: 14px; height: 14px; }
+  .icon-md { width: 16px; height: 16px; }
+
+  /* Utility */
+  .hidden { display: none !important; }
+
+  /* Update banner */
+  .update-banner {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  }
+  .update-banner-text {
+    flex: 1; font-size: 13px; font-weight: 500;
+    color: #fafafa;
+  }
+  .update-banner-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none; color: #fafafa;
+    font-size: 12px; font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 6px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .update-banner-btn:hover { background: rgba(255, 255, 255, 0.3); }
+  .update-banner-dismiss {
+    background: transparent; border: none;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 4px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+  }
+  .update-banner-dismiss:hover { color: #fafafa; }
+
+  /* Settings extras */
+  .settings-section {
+    margin-top: 16px; padding-top: 16px;
+    border-top: 1px solid #27272a;
+  }
+  .settings-section h3 {
+    font-size: 14px; font-weight: 600; margin-bottom: 8px;
+    color: #d4d4d8;
+  }
+  .settings-row {
+    display: flex; gap: 8px;
+  }
+  .settings-row .btn { flex: 1; }
+  .settings-info {
+    font-size: 11px; color: #71717a;
+    margin-top: 8px;
+  }
+  .settings-info code {
+    background: #27272a; padding: 2px 6px;
+    border-radius: 4px; font-family: ui-monospace, monospace;
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="update-banner" class="update-banner hidden">
+    <div class="update-banner-text">
+      Versiune nouă disponibilă (<span id="update-banner-version">—</span>)
+    </div>
+    <button id="update-banner-btn" class="update-banner-btn">Reîncarcă</button>
+    <button id="update-banner-dismiss" class="update-banner-dismiss" title="Închide">
+      <svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="header">
+    <h1>Calorii</h1>
+    <div class="tabs">
+      <button class="tab-btn active" data-view="today">Azi</button>
+      <button class="tab-btn" data-view="history">Istoric</button>
+      <button class="icon-btn" data-view="settings" title="Setări">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- TODAY VIEW -->
+  <div id="view-today">
+    <div class="date-nav">
+      <button class="icon-btn" id="prev-day">
+        <svg class="icon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="date-nav-text">
+        <div class="date" id="current-date-label">—</div>
+        <button class="today-link hidden" id="back-today">Înapoi la azi</button>
+      </div>
+      <button class="icon-btn" id="next-day">
+        <svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-top">
+        <div class="ring-wrap">
+          <svg width="120" height="120">
+            <circle cx="60" cy="60" r="55" stroke="rgba(255,255,255,0.08)" stroke-width="10" fill="none"/>
+            <circle id="ring-progress" cx="60" cy="60" r="55" stroke="#34d399" stroke-width="10" fill="none"
+              stroke-linecap="round" stroke-dasharray="345.575" stroke-dashoffset="345.575"
+              style="transition: stroke-dashoffset 0.4s ease"/>
+          </svg>
+          <div class="ring-center">
+            <div class="value" id="ring-value">0</div>
+            <div class="label" id="ring-label">Rămase</div>
+          </div>
+        </div>
+        <div class="summary-stats">
+          <div class="summary-row"><span class="label">Obiectiv</span><span class="value" id="stat-target">— kcal</span></div>
+          <div class="summary-row"><span class="label">Consumate</span><span class="value" id="stat-consumed">0 kcal</span></div>
+          <div class="summary-row"><span class="label">Rămase</span><span class="value good" id="stat-remaining">0 kcal</span></div>
+        </div>
+      </div>
+      <div class="macros">
+        <div class="macro" data-macro="protein">
+          <div class="macro-header"><span class="name">Proteine</span><span class="nums">0 / 0 g</span></div>
+          <div class="macro-bar"><div style="width: 0%; background: #34d399"></div></div>
+          <div class="macro-remaining">0 rămase</div>
+        </div>
+        <div class="macro" data-macro="carbs">
+          <div class="macro-header"><span class="name">Carbohidrați</span><span class="nums">0 / 0 g</span></div>
+          <div class="macro-bar"><div style="width: 0%; background: #fb7185"></div></div>
+          <div class="macro-remaining">0 rămase</div>
+        </div>
+        <div class="macro" data-macro="fat">
+          <div class="macro-header"><span class="name">Grăsimi</span><span class="nums">0 / 0 g</span></div>
+          <div class="macro-bar"><div style="width: 0%; background: #fbbf24"></div></div>
+          <div class="macro-remaining">0 rămase</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="add-buttons">
+      <button class="btn btn-primary" id="add-manual">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Adaugă manual
+      </button>
+      <button class="btn btn-secondary" id="add-paste">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+        Din etichetă
+      </button>
+    </div>
+
+    <div id="meals-container"></div>
+  </div>
+
+  <!-- HISTORY VIEW -->
+  <div id="view-history" class="hidden"></div>
+
+  <!-- SETTINGS VIEW -->
+  <div id="view-settings" class="hidden">
+    <div class="settings-card">
+      <h2>Obiective zilnice</h2>
+      <div class="field"><label>Calorii (kcal)</label><input type="number" id="set-kcal"></div>
+      <div class="field"><label>Proteine (g)</label><input type="number" id="set-protein"></div>
+      <div class="field"><label>Carbohidrați (g)</label><input type="number" id="set-carbs"></div>
+      <div class="field"><label>Grăsimi (g)</label><input type="number" id="set-fat"></div>
+      <button class="btn btn-primary" id="save-targets" style="width: 100%; margin-top: 8px;">Salvează</button>
+      <div class="hint" style="text-align: center; margin-top: 12px;">Obiectivele se păstrează pentru toate zilele.</div>
+
+      <div class="settings-section">
+        <h3>Backup date</h3>
+        <div class="settings-row">
+          <button class="btn btn-secondary" id="export-data">Export JSON</button>
+          <button class="btn btn-secondary" id="import-data">Import JSON</button>
+        </div>
+        <input type="file" id="import-file-input" accept=".json,application/json" class="hidden">
+        <div class="settings-info">Salvează toate datele (mese, obiective, favorite) într-un fișier pe care îl poți păstra ca backup sau folosi pe alt device.</div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Actualizări</h3>
+        <button class="btn btn-secondary" id="check-update" style="width: 100%;">Verifică actualizări</button>
+        <div class="settings-info">Versiune curentă: <code id="settings-version">—</code></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MEAL MODAL -->
+<div id="meal-modal" class="modal-backdrop hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="meal-modal-title">Adaugă meal</div>
+      <button class="icon-btn" id="meal-modal-close">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="field" style="position: relative;">
+      <label>Nume</label>
+      <div class="input-with-star">
+        <input type="text" id="meal-name" placeholder="ex. Piept de pui la grătar" autocomplete="off">
+        <button type="button" class="input-star-btn" id="meal-name-fav-btn" title="Favorit">
+          <svg class="icon" viewBox="0 0 24 24" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </button>
+      </div>
+      <div id="meal-suggestions" class="suggestions-list hidden"></div>
+    </div>
+
+    <div style="font-size: 11px; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em; margin: 8px 0 6px;">Valori per 100g</div>
+    <div class="grid-2">
+      <div class="field"><label>Calorii (kcal)</label><input type="number" id="meal-kcal100" placeholder="0"></div>
+      <div class="field"><label>Proteine (g)</label><input type="number" id="meal-protein100" placeholder="0"></div>
+      <div class="field"><label>Carbohidrați (g)</label><input type="number" id="meal-carbs100" placeholder="0"></div>
+      <div class="field"><label>Grăsimi (g)</label><input type="number" id="meal-fat100" placeholder="0"></div>
+    </div>
+
+    <div class="field" style="margin-top: 4px;"><label>Cantitate consumată (g)</label><input type="number" id="meal-grams" placeholder="100"></div>
+
+    <div class="total-box" id="meal-total-box">
+      <div class="label">Total pentru <span id="meal-tot-grams">100</span>g</div>
+      <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px;">
+        <div class="row" style="display: flex; justify-content: space-between"><span style="color: #a1a1aa">kcal</span><span id="meal-tot-kcal" style="font-weight: 500; font-variant-numeric: tabular-nums">0</span></div>
+        <div class="row" style="display: flex; justify-content: space-between"><span style="color: #34d399">P</span><span id="meal-tot-protein" style="font-weight: 500; font-variant-numeric: tabular-nums">0 g</span></div>
+        <div class="row" style="display: flex; justify-content: space-between"><span style="color: #fb7185">C</span><span id="meal-tot-carbs" style="font-weight: 500; font-variant-numeric: tabular-nums">0 g</span></div>
+        <div class="row" style="display: flex; justify-content: space-between"><span style="color: #fbbf24">G</span><span id="meal-tot-fat" style="font-weight: 500; font-variant-numeric: tabular-nums">0 g</span></div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="meal-cancel" style="flex: 1;">Anulează</button>
+      <button class="btn btn-primary" id="meal-save" style="flex: 1;">Salvează</button>
+    </div>
+  </div>
+</div>
+
+<!-- PASTE MODAL -->
+<div id="paste-modal" class="modal-backdrop hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="paste-modal-title">Lipește eticheta</div>
+      <button class="icon-btn" id="paste-modal-close">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div id="paste-step1">
+      <div class="field">
+        <textarea id="paste-text" placeholder="Lipește aici textul de pe etichetă (cu valori per 100g)..."></textarea>
+      </div>
+      <div class="hint">Extrag automat kcal, proteine, carbohidrați și grăsimi per 100g.</div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="paste-cancel" style="flex: 1;">Anulează</button>
+        <button class="btn btn-primary" id="paste-process" style="flex: 1;" disabled>Procesează</button>
+      </div>
+    </div>
+
+    <div id="paste-step2" class="hidden">
+      <div class="field">
+        <label>Nume</label>
+        <div class="input-with-star">
+          <input type="text" id="paste-name">
+          <button type="button" class="input-star-btn" id="paste-name-fav-btn" title="Favorit">
+            <svg class="icon" viewBox="0 0 24 24" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="info-box" style="margin-bottom: 12px;">
+        <div class="label">Detectat per 100g</div>
+        <div class="grid">
+          <div class="row"><span style="color: #a1a1aa">kcal</span><span id="p100-kcal">—</span></div>
+          <div class="row"><span style="color: #34d399">P</span><span id="p100-protein">— g</span></div>
+          <div class="row"><span style="color: #fb7185">C</span><span id="p100-carbs">— g</span></div>
+          <div class="row"><span style="color: #fbbf24">G</span><span id="p100-fat">— g</span></div>
+        </div>
+      </div>
+      <div class="field"><label>Cantitate consumată (g)</label><input type="number" id="paste-grams"></div>
+      <div class="total-box">
+        <div class="label">Total pentru <span id="tot-grams">0</span>g</div>
+        <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px;">
+          <div class="row" style="display: flex; justify-content: space-between"><span style="color: #a1a1aa">kcal</span><span id="tot-kcal" style="font-weight: 500; font-variant-numeric: tabular-nums">0</span></div>
+          <div class="row" style="display: flex; justify-content: space-between"><span style="color: #34d399">P</span><span id="tot-protein" style="font-weight: 500; font-variant-numeric: tabular-nums">0 g</span></div>
+          <div class="row" style="display: flex; justify-content: space-between"><span style="color: #fb7185">C</span><span id="tot-carbs" style="font-weight: 500; font-variant-numeric: tabular-nums">0 g</span></div>
+          <div class="row" style="display: flex; justify-content: space-between"><span style="color: #fbbf24">G</span><span id="tot-fat" style="font-weight: 500; font-variant-numeric: tabular-nums">0 g</span></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="paste-back" style="flex: 1;">Înapoi</button>
+        <button class="btn btn-primary" id="paste-confirm" style="flex: 1;">
+          <svg class="icon icon-md" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Adaugă
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ STATE ============
+// ============ APP VERSION ============
+// 🔼 INCREMENTEAZĂ asta la fiecare deploy ca să detectezi update-uri pe iPhone.
+const APP_VERSION = '1.0.0';
+
+const STORAGE_KEY_TARGETS = 'tracker:targets';
+const STORAGE_KEY_DAYS = 'tracker:days';
+const STORAGE_KEY_FAVORITES = 'tracker:favorites';
+const DEFAULT_TARGETS = { kcal: 1805, protein: 138, carbs: 158, fat: 69 };
+
+let state = {
+  targets: { ...DEFAULT_TARGETS },
+  days: {},
+  favorites: [], // array of lowercase meal names marked as favorite
+  currentDate: todayKey(),
+  view: 'today',
+  editingMealId: null,
+  expandedDays: new Set(),
+  averagesPeriod: 'week', // 'week' | 'month'
+};
+
+// ============ STORAGE ============
+function loadState() {
+  try {
+    const t = localStorage.getItem(STORAGE_KEY_TARGETS);
+    if (t) state.targets = JSON.parse(t);
+  } catch (e) {}
+  try {
+    const d = localStorage.getItem(STORAGE_KEY_DAYS);
+    if (d) state.days = JSON.parse(d);
+  } catch (e) {}
+  try {
+    const f = localStorage.getItem(STORAGE_KEY_FAVORITES);
+    if (f) state.favorites = JSON.parse(f);
+  } catch (e) {}
+}
+function saveTargets() { localStorage.setItem(STORAGE_KEY_TARGETS, JSON.stringify(state.targets)); }
+function saveDays() { localStorage.setItem(STORAGE_KEY_DAYS, JSON.stringify(state.days)); }
+function saveFavorites() { localStorage.setItem(STORAGE_KEY_FAVORITES, JSON.stringify(state.favorites)); }
+
+function isFavorite(name) {
+  return state.favorites.includes(name.trim().toLowerCase());
+}
+function toggleFavorite(name) {
+  const key = name.trim().toLowerCase();
+  const idx = state.favorites.indexOf(key);
+  if (idx >= 0) state.favorites.splice(idx, 1);
+  else state.favorites.push(key);
+  saveFavorites();
+}
+
+// ============ HELPERS ============
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function formatDate(key) {
+  const [y, m, d] = key.split('-');
+  const date = new Date(Number(y), Number(m) - 1, Number(d));
+  return date.toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+function shiftDate(key, days) {
+  const [y, m, d] = key.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + days);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+function round1(n) { return Math.round(n * 10) / 10; }
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Normalize common OCR misreads in Romanian text (l→i, mostly)
+// Uses a curated list of specific misreads rather than aggressive rules,
+// to avoid breaking legitimate words like "complet", "plantă", "blocaj"
+function fixRomanianOCR(text) {
+  if (!text) return text;
+
+  // Standalone "șl" / "Șl" → "și" / "Și"
+  text = text.replace(/\b([șȘ])l\b/g, '$1i');
+
+  // Common food/cooking words where 'l' is misread for 'i'
+  // Pattern: each entry is [wrong, right]. Case-insensitive, preserves first-letter case.
+  const swaps = [
+    // chia, piure, ulei
+    [/\bchla\b/gi, 'chia'],
+    [/\bplure\b/gi, 'piure'],
+    [/\bulel\b/gi, 'ulei'],
+    // "ingrediente", "ingredlente"
+    [/\bingredlente\b/gi, 'ingrediente'],
+    // common "-l" endings that should be "-i" (plural masculine in Romanian often ends in 'i')
+    // pesmet, alimente etc are fine; main culprits are loose words ending in consonant + l
+    [/\bfulgl\b/gi, 'fulgi'],
+    [/\bouäl\b/gi, 'ouă'],
+    // months/dates (Romanian)
+    [/\bmal\b/gi, 'mai'],
+    // generic: words ending in -ăl that should be -ăi
+    [/([a-zăâîșț])ăl\b/gi, '$1ăi'],
+  ];
+
+  for (const [wrong, right] of swaps) {
+    text = text.replace(wrong, (match) => {
+      // Preserve case of first letter
+      if (match[0] === match[0].toUpperCase()) {
+        return right[0].toUpperCase() + right.slice(1);
+      }
+      return right;
+    });
+  }
+
+  return text;
+}
+
+// ============ PARSER ============
+function parseNutritionLabel(text) {
+  const t = text.toLowerCase().replace(/\s+/g, ' ');
+  const result = { name: '', kcal100: null, protein100: null, carbs100: null, fat100: null, defaultGrams: null };
+
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length > 0) {
+    const firstLine = lines[0];
+    const nameMatch = firstLine.match(/^(?:[A-ZĂÂÎȘȚ][a-zăâîșț]+\s*[-–]\s*)?(.+)$/);
+    let name = nameMatch ? nameMatch[1].trim() : firstLine;
+    name = fixRomanianOCR(name);
+    if (name.length > 80) name = name.slice(0, 80);
+    result.name = name;
+  }
+
+  const kcalMatch = t.match(/(?:per\s*100\s*g[^.]*?)?(?:\/|valoare energetic[ăa])[^.]*?(\d+(?:[.,]\d+)?)\s*kcal/);
+  if (kcalMatch) {
+    result.kcal100 = parseFloat(kcalMatch[1].replace(',', '.'));
+  } else {
+    const per100 = t.match(/per\s*100\s*g[^]*?(\d+(?:[.,]\d+)?)\s*kcal/);
+    if (per100) result.kcal100 = parseFloat(per100[1].replace(',', '.'));
+  }
+
+  // Macros - tolerant to OCR variations where 'i' often gets read as 'l' or 't'
+  // grăsimi → grăslml, grasiml, gräslmt etc.
+  const fatMatch = t.match(/gr[äăa]s[ilt]m[ilt]\b[^\d]*(\d+(?:[.,]\d+)?)\s*g/);
+  if (fatMatch) result.fat100 = parseFloat(fatMatch[1].replace(',', '.'));
+
+  // glucide → gluclde, glucfde; carbohidrați → carbohldrati
+  const carbMatch = t.match(/(?:gluc[ilt]de|carboh[ilt]dra[țt][ilt])[^\d]*(\d+(?:[.,]\d+)?)\s*g/);
+  if (carbMatch) result.carbs100 = parseFloat(carbMatch[1].replace(',', '.'));
+
+  // proteine → protelne, protetne
+  const proteinMatch = t.match(/prote[ilt]ne[^\d]*(\d+(?:[.,]\d+)?)\s*g/);
+  if (proteinMatch) result.protein100 = parseFloat(proteinMatch[1].replace(',', '.'));
+
+  const weightMatch = t.match(/greutate[:\s]*(\d+(?:[.,]\d+)?)\s*g/);
+  if (weightMatch) result.defaultGrams = parseFloat(weightMatch[1].replace(',', '.'));
+
+  if (!result.kcal100 && result.defaultGrams) {
+    const totalKcal = t.match(/calorii[:\s]*(\d+(?:[.,]\d+)?)\s*kcal/);
+    if (totalKcal) {
+      result.kcal100 = (parseFloat(totalKcal[1].replace(',', '.')) / result.defaultGrams) * 100;
+    }
+  }
+
+  return result;
+}
+
+// ============ RENDER ============
+function render() {
+  // Toggle views
+  document.getElementById('view-today').classList.toggle('hidden', state.view !== 'today');
+  document.getElementById('view-history').classList.toggle('hidden', state.view !== 'history');
+  document.getElementById('view-settings').classList.toggle('hidden', state.view !== 'settings');
+
+  // Active tab
+  document.querySelectorAll('[data-view]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === state.view);
+  });
+
+  if (state.view === 'today') renderToday();
+  if (state.view === 'history') renderHistory();
+  if (state.view === 'settings') renderSettings();
+}
+
+function renderToday() {
+  const meals = state.days[state.currentDate] || [];
+  const totals = meals.reduce((acc, m) => ({
+    kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein,
+    carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat
+  }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+
+  const remaining = state.targets.kcal - totals.kcal;
+
+  // Date nav
+  document.getElementById('current-date-label').textContent = formatDate(state.currentDate);
+  const backBtn = document.getElementById('back-today');
+  backBtn.classList.toggle('hidden', state.currentDate === todayKey());
+  const nextBtn = document.getElementById('next-day');
+  nextBtn.disabled = state.currentDate >= todayKey();
+  nextBtn.style.opacity = state.currentDate >= todayKey() ? '0.3' : '1';
+
+  // Ring
+  const ringR = 55;
+  const circumference = 2 * Math.PI * ringR;
+  const pct = state.targets.kcal > 0 ? Math.min(totals.kcal / state.targets.kcal, 1) : 0;
+  const ring = document.getElementById('ring-progress');
+  ring.setAttribute('stroke-dashoffset', circumference - pct * circumference);
+  ring.setAttribute('stroke', totals.kcal > state.targets.kcal ? '#fb7185' : '#34d399');
+  document.getElementById('ring-value').textContent = Math.abs(Math.round(remaining));
+  document.getElementById('ring-label').textContent = remaining >= 0 ? 'Rămase' : 'Peste';
+
+  // Stats
+  document.getElementById('stat-target').textContent = `${state.targets.kcal} kcal`;
+  document.getElementById('stat-consumed').textContent = `${Math.round(totals.kcal)} kcal`;
+  const remEl = document.getElementById('stat-remaining');
+  remEl.textContent = `${Math.round(remaining)} kcal`;
+  remEl.className = `value ${remaining < 0 ? 'bad' : 'good'}`;
+
+  // Macros
+  renderMacro('protein', totals.protein, state.targets.protein, '#34d399');
+  renderMacro('carbs', totals.carbs, state.targets.carbs, '#fb7185');
+  renderMacro('fat', totals.fat, state.targets.fat, '#fbbf24');
+
+  // Meals
+  const container = document.getElementById('meals-container');
+  if (meals.length === 0) {
+    container.innerHTML = '<div class="empty-state">Nimic adăugat încă. Începe cu primul meal ↑</div>';
+  } else {
+    container.innerHTML = '<div class="meals-list">' + meals.map(meal => `
+      <div class="meal">
+        <div class="meal-info">
+          <div class="meal-name">
+            <button class="meal-fav-btn ${isFavorite(meal.name) ? 'active' : ''}" data-fav-name="${escapeHtml(meal.name)}" title="${isFavorite(meal.name) ? 'Scoate din favorite' : 'Adaugă la favorite'}">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </button>
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(meal.name)}</span>
+          </div>
+          <div class="meal-macros">
+            ${meal.grams ? `${round1(meal.grams)}g · ` : ''}
+            <span class="p">P ${round1(meal.protein)}g</span> ·
+            <span class="c">C ${round1(meal.carbs)}g</span> ·
+            <span class="g">G ${round1(meal.fat)}g</span>
+          </div>
+        </div>
+        <div class="meal-kcal">
+          <div class="num">${Math.round(meal.kcal)}</div>
+          <div class="unit">kcal</div>
+        </div>
+        <div class="meal-actions">
+          <button data-action="edit" data-id="${meal.id}" title="Edit">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button data-action="delete" data-id="${meal.id}" class="delete" title="Delete">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+      </div>
+    `).join('') + '</div>';
+
+    container.querySelectorAll('[data-action="edit"]').forEach(btn => {
+      btn.onclick = () => openMealModal(btn.dataset.id);
+    });
+    container.querySelectorAll('[data-action="delete"]').forEach(btn => {
+      btn.onclick = () => deleteMeal(btn.dataset.id);
+    });
+    container.querySelectorAll('[data-fav-name]').forEach(btn => {
+      btn.onclick = () => {
+        toggleFavorite(btn.dataset.favName);
+        render();
+      };
+    });
+  }
+}
+
+function renderMacro(name, value, target, color) {
+  const el = document.querySelector(`[data-macro="${name}"]`);
+  const pct = target > 0 ? Math.min((value / target) * 100, 100) : 0;
+  const over = value > target;
+  const remaining = target - value;
+  el.querySelector('.nums').textContent = `${round1(value)} / ${target} g`;
+  const bar = el.querySelector('.macro-bar > div');
+  bar.style.width = `${pct}%`;
+  bar.style.background = over ? '#fb7185' : color;
+  el.querySelector('.macro-remaining').textContent =
+    remaining >= 0 ? `${round1(remaining)} rămase` : `${round1(Math.abs(remaining))} peste`;
+}
+
+// Get last N days as array of {date, totals} ordered oldest -> newest
+function getLastNDaysTotals(n) {
+  const result = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const date = shiftDate(todayKey(), -i);
+    const meals = state.days[date] || [];
+    const totals = meals.reduce((acc, m) => ({
+      kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein,
+      carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat
+    }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+    result.push({ date, totals, hasData: meals.length > 0 });
+  }
+  return result;
+}
+
+// Build SVG sparkline path. Width fits into a small inline chart area.
+function buildSparkline(values, width = 100, height = 28, color = '#34d399') {
+  if (values.length === 0) return '';
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = max - min || 1;
+  const step = values.length > 1 ? width / (values.length - 1) : 0;
+  const points = values.map((v, i) => {
+    const x = i * step;
+    const y = height - ((v - min) / range) * height;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  // Area fill underneath the line
+  const areaPath = `M0,${height} L${points.join(' L')} L${width},${height} Z`;
+  const linePath = `M${points.join(' L')}`;
+  return `
+    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="display: block">
+      <path d="${areaPath}" fill="${color}" fill-opacity="0.15"/>
+      <path d="${linePath}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `;
+}
+
+function renderHistory() {
+  const view = document.getElementById('view-history');
+  const entries = Object.entries(state.days)
+    .filter(([, meals]) => meals && meals.length > 0)
+    .sort((a, b) => b[0].localeCompare(a[0]));
+
+  if (entries.length === 0) {
+    view.innerHTML = '<div class="empty-state">Nicio zi înregistrată încă.</div>';
+    return;
+  }
+
+  // --- Stats block ---
+  const periodDays = state.averagesPeriod === 'week' ? 7 : 30;
+  const periodLabel = state.averagesPeriod === 'week' ? 'Săpt' : 'Lună';
+  const otherLabel = state.averagesPeriod === 'week' ? 'Vezi lunar' : 'Vezi săptămânal';
+  const lastN = getLastNDaysTotals(periodDays);
+  // Only average days that have data
+  const daysWithData = lastN.filter(d => d.hasData);
+  const avg = daysWithData.length > 0 ? {
+    kcal: daysWithData.reduce((a, d) => a + d.totals.kcal, 0) / daysWithData.length,
+    protein: daysWithData.reduce((a, d) => a + d.totals.protein, 0) / daysWithData.length,
+    carbs: daysWithData.reduce((a, d) => a + d.totals.carbs, 0) / daysWithData.length,
+    fat: daysWithData.reduce((a, d) => a + d.totals.fat, 0) / daysWithData.length,
+  } : { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+
+  // Sparkline values for each metric across the period (0 for days with no data)
+  const kcalVals = lastN.map(d => d.totals.kcal);
+  const proteinVals = lastN.map(d => d.totals.protein);
+  const carbsVals = lastN.map(d => d.totals.carbs);
+  const fatVals = lastN.map(d => d.totals.fat);
+
+  const statsHtml = `
+    <div class="stats-card">
+      <div class="stats-header">
+        <div class="stats-title">Medie ${periodLabel.toLowerCase()} (${daysWithData.length}/${periodDays} zile)</div>
+        <button class="stats-toggle" id="stats-toggle">${otherLabel}</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">kcal</div>
+          <div class="stat-value">${Math.round(avg.kcal)}</div>
+          <div class="stat-spark">${buildSparkline(kcalVals, 100, 24, '#a78bfa')}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" style="color: #34d399">Proteine</div>
+          <div class="stat-value">${round1(avg.protein)}<span class="stat-unit">g</span></div>
+          <div class="stat-spark">${buildSparkline(proteinVals, 100, 24, '#34d399')}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" style="color: #fb7185">Carbo</div>
+          <div class="stat-value">${round1(avg.carbs)}<span class="stat-unit">g</span></div>
+          <div class="stat-spark">${buildSparkline(carbsVals, 100, 24, '#fb7185')}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" style="color: #fbbf24">Grăsimi</div>
+          <div class="stat-value">${round1(avg.fat)}<span class="stat-unit">g</span></div>
+          <div class="stat-spark">${buildSparkline(fatVals, 100, 24, '#fbbf24')}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // --- Entries (existing logic) ---
+  const entriesHtml = '<div class="history-entries">' + entries.map(([date, meals]) => {
+    const totals = meals.reduce((acc, m) => ({
+      kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein,
+      carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat
+    }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+    const pct = (totals.kcal / state.targets.kcal) * 100;
+    const over = totals.kcal > state.targets.kcal;
+    const isExpanded = state.expandedDays.has(date);
+    const isToday = date === todayKey();
+
+    const mealsHtml = isExpanded ? `
+      <div class="history-meals">
+        ${meals.map(meal => `
+          <div class="history-meal">
+            <div class="history-meal-info">
+              <div class="history-meal-name">${escapeHtml(meal.name)}</div>
+              <div class="history-meal-macros">
+                ${meal.grams ? `${round1(meal.grams)}g · ` : ''}
+                <span class="p">P ${round1(meal.protein)}g</span> ·
+                <span class="c">C ${round1(meal.carbs)}g</span> ·
+                <span class="g">G ${round1(meal.fat)}g</span>
+              </div>
+            </div>
+            <div class="history-meal-kcal">
+              <div class="num">${Math.round(meal.kcal)}</div>
+              <div class="unit">kcal</div>
+            </div>
+          </div>
+        `).join('')}
+        <button class="history-jump-btn" data-jump-date="${date}">
+          ${isToday ? 'Mergi la azi' : 'Editează ziua aceasta'}
+          <svg class="icon icon-sm" viewBox="0 0 24 24" style="display: inline-block; vertical-align: middle"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    ` : '';
+
+    return `
+      <div class="history-entry-wrap">
+        <button class="history-entry" data-toggle-date="${date}">
+          <div class="history-entry-top">
+            <div style="display: flex; align-items: center; gap: 8px">
+              <svg class="icon icon-sm history-chevron ${isExpanded ? 'expanded' : ''}" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+              <div>
+                <div style="font-weight: 500; font-size: 14px;">${formatDate(date)}</div>
+                <div style="font-size: 12px; color: #71717a;">${meals.length} ${meals.length === 1 ? 'meal' : 'meals'}</div>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-weight: 600; font-variant-numeric: tabular-nums; ${over ? 'color: #fb7185' : ''}">
+                ${Math.round(totals.kcal)} <span style="font-size: 12px; color: #71717a; font-weight: 400;">/ ${state.targets.kcal}</span>
+              </div>
+              <div style="font-size: 12px; color: #71717a;">
+                P ${Math.round(totals.protein)} · C ${Math.round(totals.carbs)} · G ${Math.round(totals.fat)}
+              </div>
+            </div>
+          </div>
+          <div style="height: 4px; background: #27272a; border-radius: 999px; overflow: hidden;">
+            <div style="height: 100%; width: ${Math.min(pct, 100)}%; background: ${over ? '#fb7185' : '#34d399'}; border-radius: 999px;"></div>
+          </div>
+        </button>
+        ${mealsHtml}
+      </div>
+    `;
+  }).join('') + '</div>';
+
+  view.innerHTML = statsHtml + entriesHtml;
+
+  document.getElementById('stats-toggle').onclick = () => {
+    state.averagesPeriod = state.averagesPeriod === 'week' ? 'month' : 'week';
+    renderHistory();
+  };
+
+  view.querySelectorAll('[data-toggle-date]').forEach(btn => {
+    btn.onclick = () => {
+      const date = btn.dataset.toggleDate;
+      if (state.expandedDays.has(date)) state.expandedDays.delete(date);
+      else state.expandedDays.add(date);
+      render();
+    };
+  });
+
+  view.querySelectorAll('[data-jump-date]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      state.currentDate = btn.dataset.jumpDate;
+      state.view = 'today';
+      render();
+    };
+  });
+}
+
+function renderSettings() {
+  document.getElementById('set-kcal').value = state.targets.kcal;
+  document.getElementById('set-protein').value = state.targets.protein;
+  document.getElementById('set-carbs').value = state.targets.carbs;
+  document.getElementById('set-fat').value = state.targets.fat;
+}
+
+// ============ ACTIONS ============
+function addMeal(meal) {
+  if (!state.days[state.currentDate]) state.days[state.currentDate] = [];
+  state.days[state.currentDate].push({ ...meal, id: String(Date.now()) + Math.random() });
+  saveDays();
+  render();
+}
+
+function updateMeal(id, updated) {
+  const meals = state.days[state.currentDate] || [];
+  const idx = meals.findIndex(m => m.id === id);
+  if (idx >= 0) {
+    meals[idx] = { ...meals[idx], ...updated };
+    saveDays();
+    render();
+  }
+}
+
+function deleteMeal(id) {
+  state.days[state.currentDate] = (state.days[state.currentDate] || []).filter(m => m.id !== id);
+  saveDays();
+  render();
+}
+
+// ============ MEAL MODAL ============
+function openMealModal(editId) {
+  state.editingMealId = editId || null;
+  const modal = document.getElementById('meal-modal');
+  const title = document.getElementById('meal-modal-title');
+
+  if (editId) {
+    const meal = (state.days[state.currentDate] || []).find(m => m.id === editId);
+    if (!meal) return;
+    title.textContent = 'Editează meal';
+    document.getElementById('meal-name').value = meal.name;
+
+    // Derive per-100g values from the saved meal
+    const grams = meal.grams || 100;
+    const factor = 100 / grams;
+    document.getElementById('meal-kcal100').value = Math.round(meal.kcal * factor);
+    document.getElementById('meal-protein100').value = round1(meal.protein * factor);
+    document.getElementById('meal-carbs100').value = round1(meal.carbs * factor);
+    document.getElementById('meal-fat100').value = round1(meal.fat * factor);
+    document.getElementById('meal-grams').value = meal.grams ? round1(meal.grams) : '100';
+  } else {
+    title.textContent = 'Adaugă meal';
+    document.getElementById('meal-name').value = '';
+    document.getElementById('meal-kcal100').value = '';
+    document.getElementById('meal-protein100').value = '';
+    document.getElementById('meal-carbs100').value = '';
+    document.getElementById('meal-fat100').value = '';
+    document.getElementById('meal-grams').value = '100';
+  }
+
+  hideSuggestions();
+  updateMealTotals();
+  syncFavBtn('meal-name-fav-btn', document.getElementById('meal-name').value);
+  modal.classList.remove('hidden');
+}
+
+// Build a list of unique favorite meals (latest version of each by name) from all logged days
+function getUniqueMeals() {
+  // Collect with timestamps from id (id starts with Date.now())
+  const allMeals = [];
+  for (const [date, meals] of Object.entries(state.days)) {
+    for (const meal of meals) {
+      // Only include meals marked as favorite
+      if (!isFavorite(meal.name)) continue;
+      // Parse the timestamp from id (e.g. "1716192000123.456" or fall back to date)
+      const idStr = String(meal.id);
+      const ts = parseFloat(idStr) || new Date(date).getTime();
+      allMeals.push({ ...meal, _ts: ts });
+    }
+  }
+  // Keep only the most recent for each unique name (case-insensitive)
+  const byName = new Map();
+  for (const meal of allMeals) {
+    const key = meal.name.trim().toLowerCase();
+    const existing = byName.get(key);
+    if (!existing || meal._ts > existing._ts) byName.set(key, meal);
+  }
+  return Array.from(byName.values()).sort((a, b) => b._ts - a._ts);
+}
+
+function showSuggestions(query) {
+  const list = document.getElementById('meal-suggestions');
+  const q = query.trim().toLowerCase();
+
+  // Require at least 3 characters to show suggestions
+  if (q.length < 3) {
+    hideSuggestions();
+    return;
+  }
+
+  const all = getUniqueMeals();
+  const filtered = all.filter(m => m.name.toLowerCase().includes(q));
+
+  // Skip suggestions if we're editing AND the query exactly matches the meal being edited
+  if (state.editingMealId) {
+    const editing = (state.days[state.currentDate] || []).find(m => m.id === state.editingMealId);
+    if (editing && editing.name.toLowerCase() === q) {
+      hideSuggestions();
+      return;
+    }
+  }
+
+  if (filtered.length === 0) {
+    hideSuggestions();
+    return;
+  }
+
+  list.innerHTML = filtered.slice(0, 20).map(m => `
+    <div class="suggestion-item" data-meal-id="${m.id}">${escapeHtml(m.name)}</div>
+  `).join('');
+
+  list.querySelectorAll('[data-meal-id]').forEach(item => {
+    item.onclick = () => {
+      const meal = filtered.find(m => String(m.id) === item.dataset.mealId);
+      if (meal) applyMealSuggestion(meal);
+    };
+  });
+
+  list.classList.remove('hidden');
+}
+
+function hideSuggestions() {
+  document.getElementById('meal-suggestions').classList.add('hidden');
+}
+
+function applyMealSuggestion(meal) {
+  document.getElementById('meal-name').value = meal.name;
+  const grams = meal.grams || 100;
+  const factor = 100 / grams;
+  document.getElementById('meal-kcal100').value = Math.round(meal.kcal * factor);
+  document.getElementById('meal-protein100').value = round1(meal.protein * factor);
+  document.getElementById('meal-carbs100').value = round1(meal.carbs * factor);
+  document.getElementById('meal-fat100').value = round1(meal.fat * factor);
+  document.getElementById('meal-grams').value = meal.grams ? round1(meal.grams) : '100';
+  hideSuggestions();
+  updateMealTotals();
+  syncFavBtn('meal-name-fav-btn', meal.name);
+  // Focus the grams field so user can adjust the quantity right away
+  document.getElementById('meal-grams').focus();
+  document.getElementById('meal-grams').select();
+}
+
+function closeMealModal() {
+  document.getElementById('meal-modal').classList.add('hidden');
+  state.editingMealId = null;
+}
+
+function updateMealTotals() {
+  const g = parseFloat(document.getElementById('meal-grams').value) || 0;
+  const kcal100 = parseFloat(document.getElementById('meal-kcal100').value) || 0;
+  const protein100 = parseFloat(document.getElementById('meal-protein100').value) || 0;
+  const carbs100 = parseFloat(document.getElementById('meal-carbs100').value) || 0;
+  const fat100 = parseFloat(document.getElementById('meal-fat100').value) || 0;
+  const factor = g / 100;
+  document.getElementById('meal-tot-grams').textContent = g;
+  document.getElementById('meal-tot-kcal').textContent = Math.round(kcal100 * factor);
+  document.getElementById('meal-tot-protein').textContent = `${round1(protein100 * factor)} g`;
+  document.getElementById('meal-tot-carbs').textContent = `${round1(carbs100 * factor)} g`;
+  document.getElementById('meal-tot-fat').textContent = `${round1(fat100 * factor)} g`;
+}
+
+function saveMealFromModal() {
+  const name = document.getElementById('meal-name').value.trim();
+  if (!name) return;
+  const g = parseFloat(document.getElementById('meal-grams').value) || 0;
+  const kcal100 = parseFloat(document.getElementById('meal-kcal100').value) || 0;
+  const protein100 = parseFloat(document.getElementById('meal-protein100').value) || 0;
+  const carbs100 = parseFloat(document.getElementById('meal-carbs100').value) || 0;
+  const fat100 = parseFloat(document.getElementById('meal-fat100').value) || 0;
+  const factor = g / 100;
+  const data = {
+    name,
+    grams: g,
+    kcal: kcal100 * factor,
+    protein: protein100 * factor,
+    carbs: carbs100 * factor,
+    fat: fat100 * factor,
+  };
+  if (state.editingMealId) updateMeal(state.editingMealId, data);
+  else addMeal(data);
+  closeMealModal();
+}
+
+// ============ PASTE MODAL ============
+let pasteParsed = null;
+
+function openPasteModal() {
+  document.getElementById('paste-text').value = '';
+  document.getElementById('paste-step1').classList.remove('hidden');
+  document.getElementById('paste-step2').classList.add('hidden');
+  document.getElementById('paste-modal-title').textContent = 'Lipește eticheta';
+  document.getElementById('paste-process').disabled = true;
+  pasteParsed = null;
+  document.getElementById('paste-modal').classList.remove('hidden');
+}
+
+function closePasteModal() {
+  document.getElementById('paste-modal').classList.add('hidden');
+}
+
+function processPaste() {
+  const text = document.getElementById('paste-text').value;
+  pasteParsed = parseNutritionLabel(text);
+
+  document.getElementById('paste-name').value = pasteParsed.name || '';
+  document.getElementById('paste-grams').value = pasteParsed.defaultGrams ? String(pasteParsed.defaultGrams) : '100';
+
+  document.getElementById('p100-kcal').textContent = pasteParsed.kcal100 != null ? round1(pasteParsed.kcal100) : '—';
+  document.getElementById('p100-protein').textContent = pasteParsed.protein100 != null ? `${round1(pasteParsed.protein100)} g` : '— g';
+  document.getElementById('p100-carbs').textContent = pasteParsed.carbs100 != null ? `${round1(pasteParsed.carbs100)} g` : '— g';
+  document.getElementById('p100-fat').textContent = pasteParsed.fat100 != null ? `${round1(pasteParsed.fat100)} g` : '— g';
+
+  updatePasteTotals();
+  syncFavBtn('paste-name-fav-btn', pasteParsed.name || '');
+
+  document.getElementById('paste-step1').classList.add('hidden');
+  document.getElementById('paste-step2').classList.remove('hidden');
+  document.getElementById('paste-modal-title').textContent = 'Confirmă valorile';
+}
+
+function updatePasteTotals() {
+  if (!pasteParsed) return;
+  const g = parseFloat(document.getElementById('paste-grams').value) || 0;
+  const factor = g / 100;
+  document.getElementById('tot-grams').textContent = g;
+  document.getElementById('tot-kcal').textContent = Math.round((pasteParsed.kcal100 || 0) * factor);
+  document.getElementById('tot-protein').textContent = `${round1((pasteParsed.protein100 || 0) * factor)} g`;
+  document.getElementById('tot-carbs').textContent = `${round1((pasteParsed.carbs100 || 0) * factor)} g`;
+  document.getElementById('tot-fat').textContent = `${round1((pasteParsed.fat100 || 0) * factor)} g`;
+}
+
+function confirmPaste() {
+  const name = document.getElementById('paste-name').value.trim();
+  if (!name || !pasteParsed || !pasteParsed.kcal100) return;
+  const g = parseFloat(document.getElementById('paste-grams').value) || 0;
+  const factor = g / 100;
+  addMeal({
+    name,
+    grams: g,
+    kcal: (pasteParsed.kcal100 || 0) * factor,
+    protein: (pasteParsed.protein100 || 0) * factor,
+    carbs: (pasteParsed.carbs100 || 0) * factor,
+    fat: (pasteParsed.fat100 || 0) * factor,
+  });
+  closePasteModal();
+}
+
+// ============ EVENT BINDINGS ============
+document.querySelectorAll('[data-view]').forEach(btn => {
+  btn.onclick = () => { state.view = btn.dataset.view; render(); };
+});
+
+document.getElementById('prev-day').onclick = () => { state.currentDate = shiftDate(state.currentDate, -1); render(); };
+document.getElementById('next-day').onclick = () => {
+  if (state.currentDate < todayKey()) { state.currentDate = shiftDate(state.currentDate, 1); render(); }
+};
+document.getElementById('back-today').onclick = () => { state.currentDate = todayKey(); render(); };
+
+document.getElementById('add-manual').onclick = () => openMealModal(null);
+document.getElementById('add-paste').onclick = () => openPasteModal();
+
+document.getElementById('meal-modal-close').onclick = closeMealModal;
+document.getElementById('meal-cancel').onclick = closeMealModal;
+document.getElementById('meal-save').onclick = saveMealFromModal;
+
+// Recalculate totals live when per-100g values or quantity change
+['meal-kcal100', 'meal-protein100', 'meal-carbs100', 'meal-fat100', 'meal-grams'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateMealTotals);
+});
+
+// Meal name suggestions
+const mealNameInput = document.getElementById('meal-name');
+mealNameInput.addEventListener('focus', () => showSuggestions(mealNameInput.value));
+mealNameInput.addEventListener('input', () => {
+  showSuggestions(mealNameInput.value);
+  syncFavBtn('meal-name-fav-btn', mealNameInput.value);
+});
+// Hide suggestions when clicking outside the name field
+document.addEventListener('mousedown', (e) => {
+  const list = document.getElementById('meal-suggestions');
+  if (list.classList.contains('hidden')) return;
+  if (!mealNameInput.contains(e.target) && !list.contains(e.target)) {
+    hideSuggestions();
+  }
+});
+
+// Star button logic — works for both manual and paste modals
+function syncFavBtn(btnId, name) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  const trimmed = (name || '').trim();
+  btn.disabled = !trimmed;
+  btn.classList.toggle('active', !!trimmed && isFavorite(trimmed));
+}
+
+document.getElementById('meal-name-fav-btn').onclick = () => {
+  const name = mealNameInput.value.trim();
+  if (!name) return;
+  toggleFavorite(name);
+  syncFavBtn('meal-name-fav-btn', name);
+  // Re-render today view so star state syncs with meal list if visible
+  if (state.view === 'today') renderToday();
+};
+
+const pasteNameInput = document.getElementById('paste-name');
+pasteNameInput.addEventListener('input', () => {
+  syncFavBtn('paste-name-fav-btn', pasteNameInput.value);
+});
+document.getElementById('paste-name-fav-btn').onclick = () => {
+  const name = pasteNameInput.value.trim();
+  if (!name) return;
+  toggleFavorite(name);
+  syncFavBtn('paste-name-fav-btn', name);
+  if (state.view === 'today') renderToday();
+};
+
+document.getElementById('paste-modal-close').onclick = closePasteModal;
+document.getElementById('paste-cancel').onclick = closePasteModal;
+document.getElementById('paste-text').addEventListener('input', (e) => {
+  document.getElementById('paste-process').disabled = !e.target.value.trim();
+});
+document.getElementById('paste-process').onclick = processPaste;
+document.getElementById('paste-back').onclick = () => {
+  document.getElementById('paste-step2').classList.add('hidden');
+  document.getElementById('paste-step1').classList.remove('hidden');
+  document.getElementById('paste-modal-title').textContent = 'Lipește eticheta';
+};
+document.getElementById('paste-grams').addEventListener('input', updatePasteTotals);
+document.getElementById('paste-confirm').onclick = confirmPaste;
+
+document.getElementById('save-targets').onclick = () => {
+  state.targets = {
+    kcal: parseFloat(document.getElementById('set-kcal').value) || 0,
+    protein: parseFloat(document.getElementById('set-protein').value) || 0,
+    carbs: parseFloat(document.getElementById('set-carbs').value) || 0,
+    fat: parseFloat(document.getElementById('set-fat').value) || 0,
+  };
+  saveTargets();
+  state.view = 'today';
+  render();
+};
+
+// Close modal on backdrop click
+document.getElementById('meal-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'meal-modal') closeMealModal();
+});
+document.getElementById('paste-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'paste-modal') closePasteModal();
+});
+
+// ============ UPDATE CHECK ============
+// Fetches the live HTML file, extracts APP_VERSION, compares with current.
+// If different, shows the update banner.
+async function checkForUpdate(showFeedback = false) {
+  try {
+    // Build URL from the current page, stripping any existing query/hash so we get the actual HTML doc.
+    // Use href (full URL) instead of pathname so it works correctly when the page is at a directory root
+    // like /calorii/ on GitHub Pages.
+    const base = window.location.href.split('?')[0].split('#')[0];
+    const url = base + (base.includes('?') ? '&' : '?') + '_v=' + Date.now();
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Fetch failed with status ' + res.status);
+    const text = await res.text();
+    // Look for APP_VERSION = '...' in the file
+    const match = text.match(/const\s+APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
+    if (!match) {
+      if (showFeedback) alert('Nu am putut găsi versiunea în fișierul de pe server.');
+      return;
+    }
+    const latest = match[1];
+    if (latest !== APP_VERSION) {
+      showUpdateBanner(latest);
+    } else if (showFeedback) {
+      alert(`Ești pe ultima versiune (${APP_VERSION}).`);
+    }
+  } catch (e) {
+    if (showFeedback) alert('Verificarea a eșuat: ' + e.message);
+    console.warn('Update check failed (non-fatal):', e);
+  }
+}
+
+function showUpdateBanner(newVersion) {
+  document.getElementById('update-banner-version').textContent = newVersion;
+  document.getElementById('update-banner').classList.remove('hidden');
+}
+
+function reloadApp() {
+  // Force-reload bypassing cache. The query param ensures iOS Safari fetches fresh.
+  const base = window.location.href.split('?')[0].split('#')[0];
+  window.location.href = base + '?_reload=' + Date.now();
+}
+
+document.getElementById('update-banner-btn').onclick = reloadApp;
+document.getElementById('update-banner-dismiss').onclick = () => {
+  document.getElementById('update-banner').classList.add('hidden');
+};
+document.getElementById('check-update').onclick = () => checkForUpdate(true);
+
+// ============ EXPORT / IMPORT ============
+function exportData() {
+  const payload = {
+    version: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    targets: state.targets,
+    days: state.days,
+    favorites: state.favorites,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = todayKey();
+  a.href = url;
+  a.download = `calorii-backup-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importData(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.targets || !data.days) {
+        alert('Fișierul nu pare să fie un backup valid.');
+        return;
+      }
+      const confirmMsg = `Importi backup din ${data.exportedAt ? new Date(data.exportedAt).toLocaleString('ro-RO') : 'data necunoscută'}?\n\nAsta va înlocui datele actuale.`;
+      if (!confirm(confirmMsg)) return;
+      state.targets = data.targets;
+      state.days = data.days;
+      state.favorites = data.favorites || [];
+      saveTargets();
+      saveDays();
+      saveFavorites();
+      render();
+      alert('Import reușit.');
+    } catch (err) {
+      alert('Nu am putut citi fișierul: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('export-data').onclick = exportData;
+document.getElementById('import-data').onclick = () => {
+  document.getElementById('import-file-input').click();
+};
+document.getElementById('import-file-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) importData(file);
+  e.target.value = ''; // reset so re-importing the same file fires the event
+});
+
+// ============ INIT ============
+loadState();
+document.getElementById('settings-version').textContent = APP_VERSION;
+render();
+// Check for updates 1.5s after load (don't block initial render)
+setTimeout(() => checkForUpdate(false), 1500);
+</script>
+</body>
+</html>
