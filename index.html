@@ -42,17 +42,33 @@
   }
   .icon-btn:hover, .icon-btn.active { background: #27272a; color: #fafafa; }
 
+  .date-nav-wrap {
+    margin-bottom: 16px;
+  }
   .date-nav {
     display: flex; align-items: center; justify-content: space-between;
     background: #18181b; border: 1px solid #27272a;
-    border-radius: 12px; padding: 8px 12px; margin-bottom: 16px;
+    border-radius: 12px; padding: 8px 12px;
   }
-  .date-nav-text { text-align: center; }
+  .date-nav-text {
+    text-align: center;
+    background: transparent; border: none; color: inherit;
+    font: inherit; cursor: pointer;
+    padding: 4px 12px; border-radius: 6px;
+    transition: background 0.15s;
+    flex: 1;
+  }
+  .date-nav-text:hover { background: #27272a; }
   .date-nav-text .date { font-size: 14px; font-weight: 500; }
-  .date-nav-text .today-link {
-    background: none; border: none; color: #34d399;
-    font-size: 12px; cursor: pointer; margin-top: 2px;
+  .back-today-link {
+    display: block;
+    margin: 6px auto 0;
+    background: transparent; border: none;
+    color: #34d399; font-size: 12px;
+    cursor: pointer; padding: 2px 8px;
+    border-radius: 4px;
   }
+  .back-today-link:hover { background: #18181b; }
 
   .summary-card {
     background: #18181b; border: 1px solid #27272a;
@@ -469,6 +485,74 @@
     border-radius: 4px; font-family: ui-monospace, monospace;
     font-size: 10px;
   }
+
+  /* Calendar */
+  .cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+    margin-top: 4px;
+  }
+  .cal-weekdays span {
+    text-align: center;
+    font-size: 11px;
+    color: #71717a;
+    font-weight: 500;
+  }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .cal-cell {
+    aspect-ratio: 1;
+    position: relative;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    color: #fafafa;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.15s;
+  }
+  .cal-cell:hover:not(:disabled) { background: rgba(255,255,255,0.06); }
+  .cal-cell:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+    color: #71717a;
+  }
+  .cal-cell.empty { visibility: hidden; pointer-events: none; }
+  .cal-cell.today {
+    color: #34d399;
+    font-weight: 700;
+  }
+  /* Selected = subtle ring outline (doesn't fight with kcal ring colors) */
+  .cal-cell.selected::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid #a1a1aa;
+    pointer-events: none;
+  }
+
+  .cal-ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 100%; height: 100%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    display: block;
+  }
+  .cal-num {
+    position: relative;
+    z-index: 1;
+    line-height: 1;
+  }
 </style>
 </head>
 <body>
@@ -495,17 +579,19 @@
 
   <!-- TODAY VIEW -->
   <div id="view-today">
-    <div class="date-nav">
-      <button class="icon-btn" id="prev-day">
-        <svg class="icon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <div class="date-nav-text">
-        <div class="date" id="current-date-label">—</div>
-        <button class="today-link hidden" id="back-today">Înapoi la azi</button>
+    <div class="date-nav-wrap">
+      <div class="date-nav">
+        <button class="icon-btn" id="prev-day">
+          <svg class="icon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="date-nav-text" id="open-calendar" type="button">
+          <span class="date" id="current-date-label">—</span>
+        </button>
+        <button class="icon-btn" id="next-day">
+          <svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
       </div>
-      <button class="icon-btn" id="next-day">
-        <svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
+      <button class="back-today-link hidden" id="back-today" type="button">Înapoi la azi</button>
     </div>
 
     <div class="summary-card">
@@ -702,11 +788,31 @@
   </div>
 </div>
 
+<!-- CALENDAR MODAL -->
+<div id="calendar-modal" class="modal-backdrop hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <button class="icon-btn" id="cal-prev-month">
+        <svg class="icon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="modal-title" id="cal-month-label">—</div>
+      <button class="icon-btn" id="cal-next-month">
+        <svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+    <div class="cal-weekdays">
+      <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <button class="btn btn-secondary" id="cal-today-btn" style="width: 100%; margin-top: 12px;">Mergi la azi</button>
+  </div>
+</div>
+
 <script>
 // ============ STATE ============
 // ============ APP VERSION ============
-// 🔼 INCREMENTEAZĂ asta la fiecare deploy ca să detectezi update-uri.
-const APP_VERSION = '1.0.1';
+// 🔼 INCREMENTEAZĂ asta la fiecare deploy ca să detectezi update-uri pe iPhone.
+const APP_VERSION = '1.1.0';
 
 const STORAGE_KEY_TARGETS = 'tracker:targets';
 const STORAGE_KEY_DAYS = 'tracker:days';
@@ -1390,6 +1496,147 @@ function closePasteModal() {
   document.getElementById('paste-modal').classList.add('hidden');
 }
 
+// ============ CALENDAR MODAL ============
+let calMonth = null; // 'YYYY-MM' currently shown in the calendar modal
+
+function openCalendarModal() {
+  // Default to the month of currentDate
+  const [y, m] = state.currentDate.split('-');
+  calMonth = `${y}-${m}`;
+  renderCalendar();
+  document.getElementById('calendar-modal').classList.remove('hidden');
+}
+
+function closeCalendarModal() {
+  document.getElementById('calendar-modal').classList.add('hidden');
+}
+
+// Returns YYYY-MM-DD of the earliest day that has any logged meal, or null
+function getEarliestLoggedDate() {
+  const keys = Object.keys(state.days).filter(k => state.days[k] && state.days[k].length > 0);
+  if (keys.length === 0) return null;
+  return keys.sort()[0];
+}
+
+function shiftMonth(monthKey, delta) {
+  const [y, m] = monthKey.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function renderCalendar() {
+  const [y, m] = calMonth.split('-').map(Number);
+  // Update title in Romanian
+  const monthName = new Date(y, m - 1, 1).toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
+  document.getElementById('cal-month-label').textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+  // First day of month — JS getDay: 0=Sun..6=Sat. We want Monday-first, so:
+  const firstDayJs = new Date(y, m - 1, 1).getDay();
+  const firstDayMondayBased = (firstDayJs + 6) % 7; // 0=Mon..6=Sun
+  const daysInMonth = new Date(y, m, 0).getDate();
+
+  const today = todayKey();
+  const earliest = getEarliestLoggedDate(); // or null
+  const targetKcal = state.targets.kcal || 1;
+
+  const grid = document.getElementById('cal-grid');
+  let html = '';
+
+  // Empty leading cells
+  for (let i = 0; i < firstDayMondayBased; i++) {
+    html += '<div class="cal-cell empty"></div>';
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateKey = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const meals = state.days[dateKey] || [];
+    const isToday = dateKey === today;
+    const isSelected = dateKey === state.currentDate;
+    const isFuture = dateKey > today;
+    const beforeFirstLog = earliest && dateKey < earliest;
+    const disabled = isFuture || beforeFirstLog;
+
+    const classes = ['cal-cell'];
+    if (isToday) classes.push('today');
+    if (isSelected) classes.push('selected');
+
+    // Compute kcal ring if there's data
+    let ringSvg = '';
+    if (meals.length > 0) {
+      const totalKcal = meals.reduce((a, m) => a + m.kcal, 0);
+      const pct = Math.min(totalKcal / targetKcal, 1);
+      const over = totalKcal > targetKcal;
+      const color = over ? '#fb7185' : '#34d399';
+      const r = 16;
+      const circ = 2 * Math.PI * r;
+      const offset = circ - pct * circ;
+      ringSvg = `
+        <svg class="cal-ring" viewBox="0 0 40 40">
+          <circle cx="20" cy="20" r="${r}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2.5"/>
+          <circle cx="20" cy="20" r="${r}" fill="none" stroke="${color}" stroke-width="2.5"
+            stroke-linecap="round" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"
+            transform="rotate(-90 20 20)"/>
+        </svg>
+      `;
+    }
+
+    html += `
+      <button class="${classes.join(' ')}" data-cal-date="${dateKey}" ${disabled ? 'disabled' : ''}>
+        ${ringSvg}
+        <span class="cal-num">${day}</span>
+      </button>
+    `;
+  }
+
+  grid.innerHTML = html;
+
+  // Disable prev-month nav if we're at or before the earliest logged month
+  const prevBtn = document.getElementById('cal-prev-month');
+  if (earliest) {
+    const earliestMonth = earliest.slice(0, 7);
+    prevBtn.disabled = calMonth <= earliestMonth;
+    prevBtn.style.opacity = prevBtn.disabled ? '0.3' : '1';
+  } else {
+    prevBtn.disabled = true;
+    prevBtn.style.opacity = '0.3';
+  }
+
+  // Disable next-month nav if we're at or beyond the current month
+  const todayMonth = today.slice(0, 7);
+  const nextBtn = document.getElementById('cal-next-month');
+  nextBtn.disabled = calMonth >= todayMonth;
+  nextBtn.style.opacity = nextBtn.disabled ? '0.3' : '1';
+
+  // Wire cell click handlers
+  grid.querySelectorAll('[data-cal-date]').forEach(btn => {
+    btn.onclick = () => {
+      state.currentDate = btn.dataset.calDate;
+      closeCalendarModal();
+      render();
+    };
+  });
+}
+
+document.getElementById('cal-prev-month').onclick = () => {
+  if (document.getElementById('cal-prev-month').disabled) return;
+  calMonth = shiftMonth(calMonth, -1);
+  renderCalendar();
+};
+document.getElementById('cal-next-month').onclick = () => {
+  if (document.getElementById('cal-next-month').disabled) return;
+  calMonth = shiftMonth(calMonth, 1);
+  renderCalendar();
+};
+document.getElementById('cal-today-btn').onclick = () => {
+  state.currentDate = todayKey();
+  closeCalendarModal();
+  render();
+};
+// Close on backdrop click
+document.getElementById('calendar-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'calendar-modal') closeCalendarModal();
+});
+
 function processPaste() {
   const text = document.getElementById('paste-text').value;
   pasteParsed = parseNutritionLabel(text);
@@ -1446,6 +1693,7 @@ document.getElementById('prev-day').onclick = () => { state.currentDate = shiftD
 document.getElementById('next-day').onclick = () => {
   if (state.currentDate < todayKey()) { state.currentDate = shiftDate(state.currentDate, 1); render(); }
 };
+document.getElementById('open-calendar').onclick = openCalendarModal;
 document.getElementById('back-today').onclick = () => { state.currentDate = todayKey(); render(); };
 
 document.getElementById('add-manual').onclick = () => openMealModal(null);
@@ -1549,11 +1797,18 @@ async function checkForUpdate(showFeedback = false) {
     // Use href (full URL) instead of pathname so it works correctly when the page is at a directory root
     // like /calorii/ on GitHub Pages.
     const base = window.location.href.split('?')[0].split('#')[0];
-    const url = base + (base.includes('?') ? '&' : '?') + '_v=' + Date.now();
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Fetch failed with status ' + res.status);
+    const url = base + '?_v=' + Date.now();
+    // Use a manual timeout because some iOS PWA contexts hang indefinitely
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, {
+      cache: 'no-store',
+      signal: controller.signal,
+      credentials: 'omit', // avoid any cookie/credential issues in PWA mode
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
-    // Look for APP_VERSION = '...' in the file
     const match = text.match(/const\s+APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
     if (!match) {
       if (showFeedback) alert('Nu am putut găsi versiunea în fișierul de pe server.');
@@ -1566,8 +1821,12 @@ async function checkForUpdate(showFeedback = false) {
       alert(`Ești pe ultima versiune (${APP_VERSION}).`);
     }
   } catch (e) {
-    if (showFeedback) alert('Verificarea a eșuat: ' + e.message);
-    console.warn('Update check failed (non-fatal):', e);
+    // On iOS PWA mode, fetch can fail with "Load failed" due to WKWebView quirks.
+    // This is non-fatal — the user can still manually check via Settings.
+    if (showFeedback) {
+      alert('Verificarea automată nu funcționează în PWA mode pe iOS. Reîncarcă manual din Safari pentru update-uri.');
+    }
+    // Don't even console.warn — too noisy. Just silently fail.
   }
 }
 
