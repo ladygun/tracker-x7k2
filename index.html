@@ -812,7 +812,7 @@
 // ============ STATE ============
 // ============ APP VERSION ============
 // 🔼 INCREMENTEAZĂ asta la fiecare deploy ca să detectezi update-uri pe iPhone.
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.1.1';
 
 const STORAGE_KEY_TARGETS = 'tracker:targets';
 const STORAGE_KEY_DAYS = 'tracker:days';
@@ -939,37 +939,37 @@ function parseNutritionLabel(text) {
     result.name = name;
   }
 
-  const kcalMatch = t.match(/(?:per\s*100\s*g[^.]*?)?(?:\/|valoare energetic[ăa])[^.]*?(\d+(?:[.,]\d+)?)\s*kcal/);
-  if (kcalMatch) {
-    result.kcal100 = parseFloat(kcalMatch[1].replace(',', '.'));
-  } else {
-    const per100 = t.match(/per\s*100\s*g[^]*?(\d+(?:[.,]\d+)?)\s*kcal/);
-    if (per100) result.kcal100 = parseFloat(per100[1].replace(',', '.'));
+  const N = '(\\d+(?:[.,]\\d+)?)';
+  const f = s => parseFloat(s.replace(',', '.'));
+
+  // weight: g or ml
+  const w = t.match(new RegExp('greutate[:\\s]*' + N + '\\s*(?:g|ml)\\b'));
+  if (w) result.defaultGrams = f(w[1]);
+
+  // kcal: "(kJ/kcal): 377 / 89.8"
+  let m = t.match(new RegExp('kj\\s*/\\s*kcal[^\\d]{0,15}' + N + '\\s*/\\s*' + N));
+  if (m) result.kcal100 = f(m[2]);
+
+  // kcal: "377 kJ / 89.8 kcal"
+  if (result.kcal100 == null) {
+    m = t.match(new RegExp('(?:\\/|valoare energetic[ăa])[^.]*?' + N + '\\s*kcal'));
+    if (m) result.kcal100 = f(m[1]);
   }
 
-  // Macros - tolerant to OCR variations where 'i' often gets read as 'l' or 't'
-  // grăsimi → grăslml, grasiml, gräslmt etc.
-  const fatMatch = t.match(/gr[äăa]s[ilt]m[ilt]\b[^\d]*(\d+(?:[.,]\d+)?)\s*g/);
-  if (fatMatch) result.fat100 = parseFloat(fatMatch[1].replace(',', '.'));
-
-  // glucide → gluclde, glucfde; carbohidrați → carbohldrati
-  const carbMatch = t.match(/(?:gluc[ilt]de|carboh[ilt]dra[țt][ilt])[^\d]*(\d+(?:[.,]\d+)?)\s*g/);
-  if (carbMatch) result.carbs100 = parseFloat(carbMatch[1].replace(',', '.'));
-
-  // proteine → protelne, protetne
-  const proteinMatch = t.match(/prote[ilt]ne[^\d]*(\d+(?:[.,]\d+)?)\s*g/);
-  if (proteinMatch) result.protein100 = parseFloat(proteinMatch[1].replace(',', '.'));
-
-  const weightMatch = t.match(/greutate[:\s]*(\d+(?:[.,]\d+)?)\s*g/);
-  if (weightMatch) result.defaultGrams = parseFloat(weightMatch[1].replace(',', '.'));
-
-  if (!result.kcal100 && result.defaultGrams) {
-    const totalKcal = t.match(/calorii[:\s]*(\d+(?:[.,]\d+)?)\s*kcal/);
-    if (totalKcal) {
-      result.kcal100 = (parseFloat(totalKcal[1].replace(',', '.')) / result.defaultGrams) * 100;
-    }
+  // fallback: total kcal / weight (tolerates "Caloril")
+  if (result.kcal100 == null && result.defaultGrams) {
+    m = t.match(new RegExp('calori[ilt][:\\s]*' + N + '\\s*kcal'));
+    if (m) result.kcal100 = f(m[1]) / result.defaultGrams * 100;
   }
 
+  // macros: number can follow "(g):" or precede "g"
+  const macro = re => {
+    const x = t.match(new RegExp(re.source + '[^\\d]{0,15}' + N));
+    return x ? f(x[1]) : null;
+  };
+  result.fat100     = macro(/gr[äăa]s[ilt]m[ilt]\b/);
+  result.carbs100   = macro(/(?:gluc[ilt]de|carboh[ilt]dra[țt][ilt])/);
+  result.protein100 = macro(/prote[ilt]ne/);
   return result;
 }
 
