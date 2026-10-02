@@ -209,7 +209,41 @@
     background: #09090b;
     border-radius: 8px;
     padding: 8px 10px;
+    border: 1px solid transparent;
+    color: inherit; font: inherit; text-align: left;
+    cursor: pointer; width: 100%;
+    transition: border-color 0.15s;
   }
+  .stat-card.active { border-color: #3f3f46; }
+  .stat-target { font-size: 11px; color: #71717a; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+  .period-tabs {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    background: #18181b; border: 1px solid #27272a;
+    border-radius: 12px; padding: 4px; margin-bottom: 12px;
+  }
+  .period-btn {
+    background: transparent; border: none; color: #a1a1aa;
+    font-size: 13px; font-weight: 500; padding: 8px 0;
+    border-radius: 8px; cursor: pointer; transition: all 0.15s;
+  }
+  .period-btn.active { background: #27272a; color: #fafafa; }
+
+  .chart-legend { display: flex; gap: 10px; font-size: 10px; color: #71717a; }
+  .chart-legend i {
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 2px; margin-right: 4px; vertical-align: baseline;
+  }
+  .chart-hint { font-size: 12px; color: #71717a; text-align: center; margin-top: 10px; }
+  .detail { margin-top: 12px; padding-top: 12px; border-top: 1px solid #27272a; }
+  .detail-title { font-size: 14px; font-weight: 500; }
+  .detail-sub { font-size: 12px; color: #71717a; margin-top: 2px; }
+  .detail-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+  .detail-cell { background: #09090b; border-radius: 8px; padding: 6px 8px; }
+  .detail-cell .l { font-size: 10px; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em; }
+  .detail-cell .v { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .detail-cell .t { font-size: 10px; color: #71717a; font-variant-numeric: tabular-nums; }
+  .detail .history-jump-btn { width: 100%; margin-top: 10px; }
   .stat-label {
     font-size: 10px;
     color: #71717a;
@@ -812,7 +846,7 @@
 // ============ STATE ============
 // ============ APP VERSION ============
 // 🔼 INCREMENTEAZĂ asta la fiecare deploy ca să detectezi update-uri pe iPhone.
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.1.2';
 
 const STORAGE_KEY_TARGETS = 'tracker:targets';
 const STORAGE_KEY_DAYS = 'tracker:days';
@@ -826,9 +860,40 @@ let state = {
   currentDate: todayKey(),
   view: 'today',
   editingMealId: null,
-  expandedDays: new Set(),
-  averagesPeriod: 'week', // 'week' | 'month'
+  historyPeriod: 'week',   // 'week' | 'month' | '6m' | 'year'
+  historyMetric: 'kcal',   // 'kcal' | 'protein' | 'carbs' | 'fat'
+  historySel: null,        // index of the selected bar in the history chart
 };
+
+// ============ STATUS COLORS ============
+// One palette for everything that compares a value to its target:
+// rings, bars, numbers, calendar rings, history charts.
+const COLOR_OK = '#34d399';    // green: on the good side of the target
+const COLOR_NEAR = '#fb923c';  // orange: within 10% of the target
+const COLOR_BAD = '#ef4444';   // red: on the wrong side of the target
+const NEAR_THRESHOLD = 0.9;
+
+// Metrics where the target is a minimum (reaching or exceeding it is good).
+// Everything else (kcal, carbs, fat) is a limit (exceeding it is bad).
+const MIN_TARGET_METRICS = ['protein'];
+
+// Returns 'ok' | 'near' | 'bad'
+function statusLevel(value, target, metric) {
+  if (!(target > 0)) return 'ok';
+  if (MIN_TARGET_METRICS.includes(metric)) {
+    if (value >= target) return 'ok';
+    if (value >= target * NEAR_THRESHOLD) return 'near';
+    return 'bad';
+  }
+  if (value > target) return 'bad';
+  if (value >= target * NEAR_THRESHOLD) return 'near';
+  return 'ok';
+}
+
+function statusColor(value, target, metric) {
+  const lvl = statusLevel(value, target, metric);
+  return lvl === 'bad' ? COLOR_BAD : lvl === 'near' ? COLOR_NEAR : COLOR_OK;
+}
 
 // ============ STORAGE ============
 function loadState() {
@@ -1013,7 +1078,7 @@ function renderToday() {
   const pct = state.targets.kcal > 0 ? Math.min(totals.kcal / state.targets.kcal, 1) : 0;
   const ring = document.getElementById('ring-progress');
   ring.setAttribute('stroke-dashoffset', circumference - pct * circumference);
-  ring.setAttribute('stroke', totals.kcal > state.targets.kcal ? '#fb7185' : '#34d399');
+  ring.setAttribute('stroke', statusColor(totals.kcal, state.targets.kcal));
   document.getElementById('ring-value').textContent = Math.abs(Math.round(remaining));
   document.getElementById('ring-label').textContent = remaining >= 0 ? 'Rămase' : 'Peste';
 
@@ -1022,12 +1087,13 @@ function renderToday() {
   document.getElementById('stat-consumed').textContent = `${Math.round(totals.kcal)} kcal`;
   const remEl = document.getElementById('stat-remaining');
   remEl.textContent = `${Math.round(remaining)} kcal`;
-  remEl.className = `value ${remaining < 0 ? 'bad' : 'good'}`;
+  remEl.className = 'value';
+  remEl.style.color = statusColor(totals.kcal, state.targets.kcal);
 
   // Macros
-  renderMacro('protein', totals.protein, state.targets.protein, '#34d399');
-  renderMacro('carbs', totals.carbs, state.targets.carbs, '#fb7185');
-  renderMacro('fat', totals.fat, state.targets.fat, '#fbbf24');
+  renderMacro('protein', totals.protein, state.targets.protein);
+  renderMacro('carbs', totals.carbs, state.targets.carbs);
+  renderMacro('fat', totals.fat, state.targets.fat);
 
   // Meals
   const container = document.getElementById('meals-container');
@@ -1080,209 +1146,291 @@ function renderToday() {
   }
 }
 
-function renderMacro(name, value, target, color) {
+function renderMacro(name, value, target) {
   const el = document.querySelector(`[data-macro="${name}"]`);
   const pct = target > 0 ? Math.min((value / target) * 100, 100) : 0;
-  const over = value > target;
   const remaining = target - value;
+  const lvl = statusLevel(value, target, name);
+  const color = statusColor(value, target, name);
   el.querySelector('.nums').textContent = `${round1(value)} / ${target} g`;
   const bar = el.querySelector('.macro-bar > div');
   bar.style.width = `${pct}%`;
-  bar.style.background = over ? '#fb7185' : color;
-  el.querySelector('.macro-remaining').textContent =
-    remaining >= 0 ? `${round1(remaining)} rămase` : `${round1(Math.abs(remaining))} peste`;
+  bar.style.background = color;
+  const rem = el.querySelector('.macro-remaining');
+  rem.textContent = remaining >= 0 ? `${round1(remaining)} rămase` : `${round1(Math.abs(remaining))} peste`;
+  rem.style.color = (lvl === 'ok' && !MIN_TARGET_METRICS.includes(name)) ? '' : color;
 }
 
-// Get last N days as array of {date, totals} ordered oldest -> newest
-function getLastNDaysTotals(n) {
-  const result = [];
-  for (let i = n - 1; i >= 0; i--) {
-    const date = shiftDate(todayKey(), -i);
-    const meals = state.days[date] || [];
-    const totals = meals.reduce((acc, m) => ({
-      kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein,
-      carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat
-    }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
-    result.push({ date, totals, hasData: meals.length > 0 });
+// ============ HISTORY (week / month / 6 months / year) ============
+const HISTORY_PERIODS = [
+  { id: 'week',  label: 'Săpt.',  title: 'ultimele 7 zile' },
+  { id: 'month', label: 'Lună',   title: 'ultimele 30 de zile' },
+  { id: '6m',    label: '6 luni', title: 'ultimele 6 luni' },
+  { id: 'year',  label: 'An',     title: 'ultimul an' },
+];
+
+const HISTORY_METRICS = [
+  { id: 'kcal',    label: 'kcal',     unit: '' },
+  { id: 'protein', label: 'Proteine', unit: 'g' },
+  { id: 'carbs',   label: 'Carbo',    unit: 'g' },
+  { id: 'fat',     label: 'Grăsimi',  unit: 'g' },
+];
+
+function parseKey(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function shortMonth(date) {
+  return date.toLocaleDateString('ro-RO', { month: 'short' }).replace('.', '');
+}
+
+function getDayTotals(key) {
+  const meals = state.days[key];
+  if (!meals || meals.length === 0) return null;
+  return meals.reduce((acc, m) => ({
+    kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein,
+    carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat
+  }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+}
+
+function averageTotals(list) {
+  const n = list.length || 1;
+  const sum = list.reduce((a, t) => ({
+    kcal: a.kcal + t.kcal, protein: a.protein + t.protein,
+    carbs: a.carbs + t.carbs, fat: a.fat + t.fat
+  }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+  return { kcal: sum.kcal / n, protein: sum.protein / n, carbs: sum.carbs / n, fat: sum.fat / n };
+}
+
+// week/month -> 1 bucket per day; 6m -> 26 buckets of 7 days (ending today); year -> 12 calendar months
+function buildHistoryBuckets(period) {
+  const today = todayKey();
+  const buckets = [];
+
+  if (period === 'week' || period === 'month') {
+    const n = period === 'week' ? 7 : 30;
+    for (let i = n - 1; i >= 0; i--) {
+      const k = shiftDate(today, -i);
+      buckets.push({ start: k, end: k, days: [k] });
+    }
+  } else if (period === '6m') {
+    for (let w = 25; w >= 0; w--) {
+      const end = shiftDate(today, -w * 7);
+      const start = shiftDate(end, -6);
+      const days = [];
+      for (let i = 0; i < 7; i++) days.push(shiftDate(start, i));
+      buckets.push({ start, end, days });
+    }
+  } else {
+    const thisMonth = today.slice(0, 7);
+    for (let i = 11; i >= 0; i--) {
+      const mk = shiftMonth(thisMonth, -i);
+      const [y, m] = mk.split('-').map(Number);
+      const dim = new Date(y, m, 0).getDate();
+      const days = [];
+      for (let d = 1; d <= dim; d++) {
+        const k = `${mk}-${String(d).padStart(2, '0')}`;
+        if (k <= today) days.push(k);
+      }
+      buckets.push({ start: days[0], end: days[days.length - 1], days, monthKey: mk });
+    }
   }
-  return result;
+
+  for (const b of buckets) {
+    const list = b.days.map(getDayTotals).filter(Boolean);
+    b.n = list.length;
+    b.avg = list.length ? averageTotals(list) : null;
+  }
+  return buckets;
 }
 
-// Build SVG sparkline path. Width fits into a small inline chart area.
-function buildSparkline(values, width = 100, height = 28, color = '#34d399') {
-  if (values.length === 0) return '';
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const range = max - min || 1;
-  const step = values.length > 1 ? width / (values.length - 1) : 0;
-  const points = values.map((v, i) => {
-    const x = i * step;
-    const y = height - ((v - min) / range) * height;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
+function axisLabel(period, b, i, buckets) {
+  if (period === 'week') return parseKey(b.start).toLocaleDateString('ro-RO', { weekday: 'short' }).replace('.', '');
+  if (period === 'month') return (buckets.length - 1 - i) % 5 === 0 ? String(parseKey(b.start).getDate()) : '';
+  if (period === '6m') {
+    if (i === 0) return '';
+    const m = parseKey(b.end).getMonth();
+    const prevM = parseKey(buckets[i - 1].end).getMonth();
+    return m !== prevM ? shortMonth(parseKey(b.end)) : '';
+  }
+  return shortMonth(parseKey(b.start));
+}
+
+function fmtShortDate(key) {
+  return parseKey(key).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' });
+}
+
+function bucketTitle(period, b) {
+  if (period === 'week' || period === 'month') return formatDate(b.start);
+  if (period === '6m') return `${fmtShortDate(b.start)} - ${fmtShortDate(b.end)}`;
+  const [y, m] = b.monthKey.split('-').map(Number);
+  const s = new Date(y, m - 1, 1).toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function renderHistoryChart(buckets, metric, sel, period) {
+  const W = 320, H = 150, padT = 10, padB = 20;
+  const plotH = H - padT - padB;
+  const baseY = padT + plotH;
+  const target = state.targets[metric] || 0;
+  const vals = buckets.map(b => b.avg ? b.avg[metric] : null);
+  const maxV = Math.max(target * 1.15, ...vals.filter(v => v != null).map(v => v * 1.05), 1);
+  const slot = W / buckets.length;
+  const bw = Math.max(2, slot * 0.68);
+  const yOf = v => padT + plotH - (v / maxV) * plotH;
+
+  let bars = '', labels = '', hits = '';
+  buckets.forEach((b, i) => {
+    const x = i * slot + (slot - bw) / 2;
+    const v = vals[i];
+    const dim = sel != null && sel !== i;
+    if (v == null) {
+      bars += `<rect x="${x.toFixed(1)}" y="${baseY - 2}" width="${bw.toFixed(1)}" height="2" rx="1" fill="#27272a"/>`;
+    } else {
+      const y = yOf(v);
+      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(2, baseY - y).toFixed(1)}" rx="${Math.min(3, bw / 2).toFixed(1)}" fill="${statusColor(v, target, metric)}" opacity="${dim ? 0.4 : 1}"/>`;
+    }
+    const lbl = axisLabel(period, b, i, buckets);
+    if (lbl) labels += `<text x="${(i * slot + slot / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="9" fill="#71717a">${lbl}</text>`;
+    hits += `<rect data-bucket="${i}" x="${(i * slot).toFixed(1)}" y="0" width="${slot.toFixed(1)}" height="${H}" fill="transparent" style="cursor: pointer"/>`;
   });
-  // Area fill underneath the line
-  const areaPath = `M0,${height} L${points.join(' L')} L${width},${height} Z`;
-  const linePath = `M${points.join(' L')}`;
+
+  const ty = yOf(target).toFixed(1);
+  const targetLine = target > 0
+    ? `<line x1="0" x2="${W}" y1="${ty}" y2="${ty}" stroke="#a1a1aa" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>`
+    : '';
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display: block">${bars}${targetLine}${labels}${hits}</svg>`;
+}
+
+function renderHistoryDetail(buckets, period, sel) {
+  if (sel == null || !buckets[sel]) return '<div class="chart-hint">Atinge o bară pentru detalii.</div>';
+  const b = buckets[sel];
+  const daily = period === 'week' || period === 'month';
+  const title = bucketTitle(period, b);
+  if (!b.avg) {
+    return `<div class="detail"><div><div class="detail-title">${title}</div><div class="detail-sub">Nicio zi înregistrată.</div></div></div>`;
+  }
+  const mealCount = daily ? state.days[b.start].length : 0;
+  const sub = daily
+    ? `${mealCount} ${mealCount === 1 ? 'meal' : 'meals'}`
+    : `Medie zilnică pe ${b.n} ${b.n === 1 ? 'zi' : 'zile'} cu date (din ${b.days.length})`;
+  const cells = HISTORY_METRICS.map(m => {
+    const v = b.avg[m.id];
+    const t = state.targets[m.id];
+    const shown = m.id === 'kcal' ? Math.round(v) : round1(v);
+    return `
+      <div class="detail-cell">
+        <div class="l">${m.label}</div>
+        <div class="v" style="color: ${statusColor(v, t, m.id)}">${shown}<span class="stat-unit">${m.unit}</span></div>
+        <div class="t">/ ${t}${m.unit}</div>
+      </div>`;
+  }).join('');
+  const jump = daily ? `
+    <button class="history-jump-btn" data-jump-date="${b.start}">
+      ${b.start === todayKey() ? 'Mergi la azi' : 'Editează ziua aceasta'}
+      <svg class="icon icon-sm" viewBox="0 0 24 24" style="display: inline-block; vertical-align: middle"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>` : '';
   return `
-    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="display: block">
-      <path d="${areaPath}" fill="${color}" fill-opacity="0.15"/>
-      <path d="${linePath}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  `;
+    <div class="detail">
+      <div><div class="detail-title">${title}</div><div class="detail-sub">${sub}</div></div>
+      <div class="detail-grid">${cells}</div>
+      ${jump}
+    </div>`;
 }
 
 function renderHistory() {
   const view = document.getElementById('view-history');
-  const entries = Object.entries(state.days)
-    .filter(([, meals]) => meals && meals.length > 0)
-    .sort((a, b) => b[0].localeCompare(a[0]));
-
-  if (entries.length === 0) {
+  const hasAny = Object.values(state.days).some(meals => meals && meals.length > 0);
+  if (!hasAny) {
     view.innerHTML = '<div class="empty-state">Nicio zi înregistrată încă.</div>';
     return;
   }
 
-  // --- Stats block ---
-  const periodDays = state.averagesPeriod === 'week' ? 7 : 30;
-  const periodLabel = state.averagesPeriod === 'week' ? 'Săpt' : 'Lună';
-  const otherLabel = state.averagesPeriod === 'week' ? 'Vezi lunar' : 'Vezi săptămânal';
-  const lastN = getLastNDaysTotals(periodDays);
-  // Only average days that have data
-  const daysWithData = lastN.filter(d => d.hasData);
-  const avg = daysWithData.length > 0 ? {
-    kcal: daysWithData.reduce((a, d) => a + d.totals.kcal, 0) / daysWithData.length,
-    protein: daysWithData.reduce((a, d) => a + d.totals.protein, 0) / daysWithData.length,
-    carbs: daysWithData.reduce((a, d) => a + d.totals.carbs, 0) / daysWithData.length,
-    fat: daysWithData.reduce((a, d) => a + d.totals.fat, 0) / daysWithData.length,
-  } : { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  const period = state.historyPeriod;
+  const periodInfo = HISTORY_PERIODS.find(p => p.id === period);
+  const metric = state.historyMetric;
+  const metricInfo = HISTORY_METRICS.find(m => m.id === metric);
+  const aggregated = period === '6m' || period === 'year';
 
-  // Sparkline values for each metric across the period (0 for days with no data)
-  const kcalVals = lastN.map(d => d.totals.kcal);
-  const proteinVals = lastN.map(d => d.totals.protein);
-  const carbsVals = lastN.map(d => d.totals.carbs);
-  const fatVals = lastN.map(d => d.totals.fat);
+  const buckets = buildHistoryBuckets(period);
+  const allDays = buckets.flatMap(b => b.days.map(getDayTotals).filter(Boolean));
+  const windowDays = buckets.reduce((a, b) => a + b.days.length, 0);
+  const avg = allDays.length ? averageTotals(allDays) : { kcal: 0, protein: 0, carbs: 0, fat: 0 };
 
-  const statsHtml = `
+  const periodsHtml = '<div class="period-tabs">' + HISTORY_PERIODS.map(p =>
+    `<button class="period-btn ${p.id === period ? 'active' : ''}" data-period="${p.id}">${p.label}</button>`
+  ).join('') + '</div>';
+
+  const statCards = HISTORY_METRICS.map(m => {
+    const v = avg[m.id];
+    const t = state.targets[m.id];
+    const color = allDays.length ? statusColor(v, t, m.id) : '#71717a';
+    const shown = m.id === 'kcal' ? Math.round(v) : round1(v);
+    return `
+      <button class="stat-card ${m.id === metric ? 'active' : ''}" data-metric="${m.id}">
+        <div class="stat-label">${m.label}</div>
+        <div class="stat-value" style="color: ${color}">${shown}<span class="stat-unit">${m.unit}</span></div>
+        <div class="stat-target">/ ${t}${m.unit}</div>
+      </button>`;
+  }).join('');
+
+  const isMin = MIN_TARGET_METRICS.includes(metric);
+  const legend = isMin ? `
+    <div class="chart-legend">
+      <span><i style="background: ${COLOR_BAD}"></i>sub 90%</span>
+      <span><i style="background: ${COLOR_NEAR}"></i>aproape</span>
+      <span><i style="background: ${COLOR_OK}"></i>atins</span>
+    </div>` : `
+    <div class="chart-legend">
+      <span><i style="background: ${COLOR_OK}"></i>sub 90%</span>
+      <span><i style="background: ${COLOR_NEAR}"></i>aproape</span>
+      <span><i style="background: ${COLOR_BAD}"></i>peste</span>
+    </div>`;
+
+  view.innerHTML = `
+    ${periodsHtml}
     <div class="stats-card">
       <div class="stats-header">
-        <div class="stats-title">Medie ${periodLabel.toLowerCase()} (${daysWithData.length}/${periodDays} zile)</div>
-        <button class="stats-toggle" id="stats-toggle">${otherLabel}</button>
+        <div class="stats-title">Medie zilnică, ${periodInfo.title} (${allDays.length}/${windowDays} zile)</div>
       </div>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">kcal</div>
-          <div class="stat-value">${Math.round(avg.kcal)}</div>
-          <div class="stat-spark">${buildSparkline(kcalVals, 100, 24, '#a78bfa')}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label" style="color: #34d399">Proteine</div>
-          <div class="stat-value">${round1(avg.protein)}<span class="stat-unit">g</span></div>
-          <div class="stat-spark">${buildSparkline(proteinVals, 100, 24, '#34d399')}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label" style="color: #fb7185">Carbo</div>
-          <div class="stat-value">${round1(avg.carbs)}<span class="stat-unit">g</span></div>
-          <div class="stat-spark">${buildSparkline(carbsVals, 100, 24, '#fb7185')}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label" style="color: #fbbf24">Grăsimi</div>
-          <div class="stat-value">${round1(avg.fat)}<span class="stat-unit">g</span></div>
-          <div class="stat-spark">${buildSparkline(fatVals, 100, 24, '#fbbf24')}</div>
-        </div>
+      <div class="stats-grid">${statCards}</div>
+    </div>
+    <div class="stats-card">
+      <div class="stats-header">
+        <div class="stats-title">${metricInfo.label}${aggregated ? ' (medie/zi)' : ''} față de țintă</div>
+        ${legend}
       </div>
+      ${renderHistoryChart(buckets, metric, state.historySel, period)}
+      ${renderHistoryDetail(buckets, period, state.historySel)}
     </div>
   `;
 
-  // --- Entries (existing logic) ---
-  const entriesHtml = '<div class="history-entries">' + entries.map(([date, meals]) => {
-    const totals = meals.reduce((acc, m) => ({
-      kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein,
-      carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat
-    }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
-    const pct = (totals.kcal / state.targets.kcal) * 100;
-    const over = totals.kcal > state.targets.kcal;
-    const isExpanded = state.expandedDays.has(date);
-    const isToday = date === todayKey();
-
-    const mealsHtml = isExpanded ? `
-      <div class="history-meals">
-        ${meals.map(meal => `
-          <div class="history-meal">
-            <div class="history-meal-info">
-              <div class="history-meal-name">${escapeHtml(meal.name)}</div>
-              <div class="history-meal-macros">
-                ${meal.grams ? `${round1(meal.grams)}g · ` : ''}
-                <span class="p">P ${round1(meal.protein)}g</span> ·
-                <span class="c">C ${round1(meal.carbs)}g</span> ·
-                <span class="g">G ${round1(meal.fat)}g</span>
-              </div>
-            </div>
-            <div class="history-meal-kcal">
-              <div class="num">${Math.round(meal.kcal)}</div>
-              <div class="unit">kcal</div>
-            </div>
-          </div>
-        `).join('')}
-        <button class="history-jump-btn" data-jump-date="${date}">
-          ${isToday ? 'Mergi la azi' : 'Editează ziua aceasta'}
-          <svg class="icon icon-sm" viewBox="0 0 24 24" style="display: inline-block; vertical-align: middle"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
-      </div>
-    ` : '';
-
-    return `
-      <div class="history-entry-wrap">
-        <button class="history-entry" data-toggle-date="${date}">
-          <div class="history-entry-top">
-            <div style="display: flex; align-items: center; gap: 8px">
-              <svg class="icon icon-sm history-chevron ${isExpanded ? 'expanded' : ''}" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-              <div>
-                <div style="font-weight: 500; font-size: 14px;">${formatDate(date)}</div>
-                <div style="font-size: 12px; color: #71717a;">${meals.length} ${meals.length === 1 ? 'meal' : 'meals'}</div>
-              </div>
-            </div>
-            <div style="text-align: right;">
-              <div style="font-weight: 600; font-variant-numeric: tabular-nums; ${over ? 'color: #fb7185' : ''}">
-                ${Math.round(totals.kcal)} <span style="font-size: 12px; color: #71717a; font-weight: 400;">/ ${state.targets.kcal}</span>
-              </div>
-              <div style="font-size: 12px; color: #71717a;">
-                P ${Math.round(totals.protein)} · C ${Math.round(totals.carbs)} · G ${Math.round(totals.fat)}
-              </div>
-            </div>
-          </div>
-          <div style="height: 4px; background: #27272a; border-radius: 999px; overflow: hidden;">
-            <div style="height: 100%; width: ${Math.min(pct, 100)}%; background: ${over ? '#fb7185' : '#34d399'}; border-radius: 999px;"></div>
-          </div>
-        </button>
-        ${mealsHtml}
-      </div>
-    `;
-  }).join('') + '</div>';
-
-  view.innerHTML = statsHtml + entriesHtml;
-
-  document.getElementById('stats-toggle').onclick = () => {
-    state.averagesPeriod = state.averagesPeriod === 'week' ? 'month' : 'week';
-    renderHistory();
-  };
-
-  view.querySelectorAll('[data-toggle-date]').forEach(btn => {
+  view.querySelectorAll('[data-period]').forEach(btn => {
     btn.onclick = () => {
-      const date = btn.dataset.toggleDate;
-      if (state.expandedDays.has(date)) state.expandedDays.delete(date);
-      else state.expandedDays.add(date);
-      render();
+      state.historyPeriod = btn.dataset.period;
+      state.historySel = null;
+      renderHistory();
     };
   });
-
-  view.querySelectorAll('[data-jump-date]').forEach(btn => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      state.currentDate = btn.dataset.jumpDate;
+  view.querySelectorAll('[data-metric]').forEach(btn => {
+    btn.onclick = () => { state.historyMetric = btn.dataset.metric; renderHistory(); };
+  });
+  view.querySelectorAll('[data-bucket]').forEach(el => {
+    el.onclick = () => {
+      const i = Number(el.dataset.bucket);
+      state.historySel = state.historySel === i ? null : i;
+      renderHistory();
+    };
+  });
+  const jumpBtn = view.querySelector('[data-jump-date]');
+  if (jumpBtn) {
+    jumpBtn.onclick = () => {
+      state.currentDate = jumpBtn.dataset.jumpDate;
       state.view = 'today';
       render();
     };
-  });
+  }
 }
 
 function renderSettings() {
@@ -1565,8 +1713,7 @@ function renderCalendar() {
     if (meals.length > 0) {
       const totalKcal = meals.reduce((a, m) => a + m.kcal, 0);
       const pct = Math.min(totalKcal / targetKcal, 1);
-      const over = totalKcal > targetKcal;
-      const color = over ? '#fb7185' : '#34d399';
+      const color = statusColor(totalKcal, targetKcal);
       const r = 16;
       const circ = 2 * Math.PI * r;
       const offset = circ - pct * circ;
